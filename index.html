@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Neliel — Prototype 0.1</title><style>
+*{box-sizing:border-box}body{margin:0;background:#0b0918;color:#f7edff;font-family:system-ui,sans-serif;overflow:hidden}canvas{display:block}header{position:absolute;top:0;left:0;right:0;padding:16px 18px;background:linear-gradient(#090715bb,transparent);pointer-events:none}h1{margin:0;font-size:22px;letter-spacing:2px}small{color:#c4a8f2}#panel{position:absolute;bottom:18px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}button{border:1px solid #a96dff88;background:#26153dcf;color:white;border-radius:16px;padding:12px 14px;font-weight:600;backdrop-filter:blur(8px)}#message{position:absolute;top:72px;left:12px;right:12px;text-align:center;pointer-events:none}#message span{display:inline-block;background:#1a1235d9;border:1px solid #a96dff77;border-radius:15px;padding:9px 14px}#error{position:absolute;top:50%;left:10%;right:10%;text-align:center;color:#ffcaca}
+</style></head><body><header><h1>NELIEL <small>α 0.1</small></h1><small>Trascina per esplorare · pizzica per zoomare</small></header><div id="message"><span>Benvenuto nella mia stanza ✨</span></div><div id="panel"><button id="look">Cambia outfit</button><button id="wave">Saluta</button><button id="sit">Riposa</button><button id="reset">Vista iniziale</button></div><div id="error"></div>
+<script type="module">
+import * as THREE from 'https://esm.sh/three@0.170.0';
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x0e1026);scene.fog=new THREE.Fog(0x0e1026,14,35);
+const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
+scene.add(new THREE.HemisphereLight(0xbbaaff,0x292036,2.2));const light=new THREE.DirectionalLight(0xffddff,3);light.position.set(3,7,5);scene.add(light);const purple=new THREE.PointLight(0x8b4dff,35,12);purple.position.set(-3,3,-2);scene.add(purple);
+const mat=(c)=>new THREE.MeshToonMaterial({color:c});const skin=mat(0xf5c7bd),hair=mat(0xdedbfa),eye=mat(0x9a59ff),black=mat(0x151222),white=mat(0xeae5ff),accent=mat(0x9153d9),wall=mat(0x24203b),floor=mat(0x393047);
+function box(w,h,d,m,x,y,z,parent=scene){const a=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);a.position.set(x,y,z);parent.add(a);return a}
+function orb(r,m,x,y,z,parent=scene){const a=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),m);a.position.set(x,y,z);parent.add(a);return a}
+box(12,.15,10,floor,0,-.1,0);box(12,5,.15,wall,0,2.4,-5);box(.15,5,10,wall,-6,2.4,0);box(.15,5,10,wall,6,2.4,0);
+box(3,.12,1.7,black,-3,.55,-2.7);box(3,.5,1.6,accent,-3,.3,-2.7);box(2.6,.18,.8,white,-3,.68,-3.1);box(1.6,.6,.8,black,3,.5,-3);box(1.8,.12,.9,accent,3,.85,-3);box(2,.08,.1,accent,0,3.6,-4.87);
+for(let i=0;i<7;i++)box(.08,.08,.08,accent,-4.8+i*.8,2.8,-4.85);
+const avatar=new THREE.Group();scene.add(avatar);avatar.position.set(0,0,0);
+const torso=box(.65,.85,.33,black,0,1.65,0,avatar);const hips=box(.62,.3,.38,black,0,1.07,0,avatar);
+const head=orb(.35,skin,0,2.43,0,avatar);orb(.37,hair,0,2.61,-.08,avatar);
+for(const s of [-1,1]){orb(.065,eye,s*.13,2.46,.315,avatar);box(.22,.75,.22,black,s*.21,.59,0,avatar);box(.18,.74,.19,skin,s*.48,1.62,0,avatar);box(.14,.95,.14,hair,s*.24,2.08,-.22,avatar)}
+const tattoo=box(.09,.28,.012,accent,.32,.71,.12,avatar);
+const smile=box(.15,.025,.015,accent,0,2.28,.326,avatar);
+const clock=new THREE.Clock();let outfit=0,waveUntil=0,rest=false,angle=.25,elev=.23,dist=6,drag=false,px=0,py=0;
+function say(t){document.querySelector('#message span').textContent=t}
+document.querySelector('#look').onclick=()=>{outfit=1-outfit;torso.material=outfit?white:black;hips.material=outfit?white:black;say(outfit?'Oggi scelgo il bianco e viola.':'Nero e viola, decisamente il mio stile.')};
+document.querySelector('#wave').onclick=()=>{waveUntil=clock.elapsedTime+2;say('Ciao! Sono Neliel. Piacere di vederti!')};
+document.querySelector('#sit').onclick=()=>{rest=!rest;say(rest?'Mi rilasso un momento.':'Eccomi di nuovo!')};
+document.querySelector('#reset').onclick=()=>{angle=.25;elev=.23;dist=6;say('Vista ripristinata.')};
+renderer.domElement.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
+renderer.domElement.addEventListener('pointerup',()=>drag=false);
+renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;angle+=(e.clientX-px)*.007;elev=Math.max(-.2,Math.min(1.1,elev+(e.clientY-py)*.005));px=e.clientX;py=e.clientY});
+renderer.domElement.addEventListener('wheel',e=>{dist=Math.max(2.5,Math.min(12,dist+e.deltaY*.005))},{passive:true});
+function render(){requestAnimationFrame(render);const t=clock.getElapsedTime();avatar.position.y=(rest?-.28:0)+Math.sin(t*1.5)*.018;avatar.rotation.y=Math.sin(t*.5)*.08;avatar.rotation.z=t<waveUntil?Math.sin(t*14)*.04:0;camera.position.set(Math.sin(angle)*dist,2+Math.sin(elev)*dist*.55,Math.cos(angle)*dist);camera.lookAt(0,1.45,0);renderer.render(scene,camera)}render();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script></body></html>
