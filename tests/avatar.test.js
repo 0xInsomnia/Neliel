@@ -6,8 +6,8 @@ import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 
 // Parse the shipped geometry/rig using the actual loader, without a GPU or image decoder.
 // Only material texture references are removed in this in-memory test copy.
-async function loadGeometry() {
-  const source = fs.readFileSync(new URL('../assets/neliel.glb', import.meta.url));
+async function loadGeometry(file) {
+  const source = fs.readFileSync(new URL(`../assets/${file}`, import.meta.url));
   const jsonLength = source.readUInt32LE(12);
   const doc = JSON.parse(source.subarray(20, 20 + jsonLength));
   doc.materials = doc.materials.map(material => ({ name: material.name }));
@@ -26,8 +26,9 @@ async function loadGeometry() {
   return scene;
 }
 
-test('the production loader reconstructs finite skinned geometry and facial targets', async () => {
-  const scene = await loadGeometry();
+for (const file of ['neliel.glb', 'neliel-refined.glb']) {
+test(`${file}: the production loader reconstructs finite skinned geometry and facial targets`, async () => {
+  const scene = await loadGeometry(file);
   let vertices = 0, skinned = 0, faces = 0;
   scene.traverse(mesh => {
     if (!mesh.isSkinnedMesh) return;
@@ -45,8 +46,8 @@ test('the production loader reconstructs finite skinned geometry and facial targ
   assert.ok(skinned >= 3 && vertices > 1000 && faces > 0);
 });
 
-test('arm bones deform the mesh, and the long hair is bound to its own bone chain', async () => {
-  const scene = await loadGeometry();
+test(`${file}: arm bones deform the mesh, and the long hair is bound to its own bone chain`, async () => {
+  const scene = await loadGeometry(file);
   const samples = [];
   scene.traverse(mesh => {
     if (!mesh.isSkinnedMesh) return;
@@ -66,3 +67,29 @@ test('arm bones deform the mesh, and the long hair is bound to its own bone chai
   assert.ok(hair.isSkinnedMesh);
   for (let i = 0; i < 4; i++) assert.ok(hair.skeleton.bones.some(bone => bone.name === `Ponytail_${i}`));
 });
+
+
+test(`${file}: each facial expression deforms vertices without invalid positions`, async () => {
+  const scene = await loadGeometry(file);
+  const faces = [];
+  scene.traverse(mesh => {
+    if (mesh.morphTargetDictionary?.smile !== undefined) faces.push(mesh);
+  });
+  for (const expression of ['smile', 'surprised', 'blink', 'wink']) {
+    let changed = 0;
+    for (const mesh of faces) {
+      mesh.morphTargetInfluences.fill(0);
+      const before = Array.from({length: mesh.geometry.attributes.position.count},
+        (_, i) => mesh.getVertexPosition(i, new Vector3()));
+      mesh.morphTargetInfluences[mesh.morphTargetDictionary[expression]] = 1;
+      for (let i = 0; i < before.length; i++) {
+        const after = mesh.getVertexPosition(i, new Vector3());
+        assert.ok(after.toArray().every(Number.isFinite));
+        assert.ok(after.distanceTo(before[i]) < .15, 'facial movement must remain local');
+        if (after.distanceTo(before[i]) > .0001) changed++;
+      }
+    }
+    assert.ok(changed > 10, `${expression} must move actual face vertices`);
+  }
+});
+}

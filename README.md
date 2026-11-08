@@ -1,3 +1,21 @@
+## Revisione del modello 01 — 9 novembre 2026
+
+Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) ora
+carica `assets/neliel-refined.glb`, recuperato dal checkpoint `1959322`.
+Il link **Confronta con la base 0.3** apre lo stesso studio con il modello
+precedente (`?model=original`). Il confronto ricarica la pagina e ripristina
+posa e camera; viene caricato un solo avatar per contenere la memoria mobile.
+
+La revisione modifica la geometria di occhi/mandibola, frangia e coda lunga.
+Non è il modello definitivo: outfit, anatomia e acconciatura restano da rifinire.
+La pagina principale conserva la base 0.3.
+
+Verifica: **15 test passati**, entrambi i GLB con **0 errori e 0 warning**.
+Sono verificati anche i quattro morph facciali, rig, UV e pesi di skinning.
+Dettagli e limiti: [docs/MESH_REFINEMENT.md](docs/MESH_REFINEMENT.md).
+
+---
+
 ## Studio cel shading sperimentale
 
 Nuovo studio separato: https://0xinsomnia.github.io/Neliel/cel-studio/

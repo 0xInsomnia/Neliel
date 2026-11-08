@@ -2,9 +2,10 @@ import fs from 'node:fs';
 import assert from 'node:assert/strict';
 import validator from 'gltf-validator';
 
-const bytes = fs.readFileSync(new URL('../assets/neliel.glb', import.meta.url));
+for (const file of ['neliel.glb', 'neliel-refined.glb']) {
+const bytes = fs.readFileSync(new URL(`../assets/${file}`, import.meta.url));
 const report = await validator.validateBytes(new Uint8Array(bytes), { maxIssues: 0 });
-console.log(JSON.stringify({ bytes: bytes.length, errors: report.issues.numErrors,
+console.log(JSON.stringify({ file, bytes: bytes.length, errors: report.issues.numErrors,
   warnings: report.issues.numWarnings, infos: report.issues.numInfos, hints: report.issues.numHints,
   codes: [...new Set(report.issues.messages.map(message => message.code))] }, null, 2));
 assert.equal(report.issues.numErrors, 0, 'glTF validation errors');
@@ -27,3 +28,5 @@ for (const name of ['Pannelli', 'Stivali', 'Dettagli']) {
 }
 assert.ok(gltf.images.every(image => image.bufferView !== undefined), 'Textures must be embedded');
 console.log('PASS: complete articulated avatar, embedded textures and facial targets');
+
+}

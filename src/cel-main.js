@@ -114,7 +114,12 @@ el('zoom-in').onclick = () => { orbit.zoomIn(); say('Zoom avanti'); };
 el('zoom-out').onclick = () => { orbit.zoomOut(); say('Zoom indietro'); };
 
 try {
-  avatar = await loadAvatar(new URL('../assets/neliel.glb', import.meta.url), reducedMotion, applyAnimeMaterials);
+  const original = new URLSearchParams(location.search).get('model') === 'original';
+  const modelName = original ? 'Base 0.3' : 'Revisione 01';
+  el('model-label').textContent = modelName;
+  el('compare-model').href = original ? './' : '?model=original';
+  el('compare-model').textContent = original ? 'Mostra revisione 01' : 'Confronta con la base 0.3';
+  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials);
   scene.add(avatar.root);
   for (const [id, action, label] of [
     ['outfit', 'changeOutfit', 'Outfit'], ['hair', 'changeHair', 'Capelli'],
@@ -141,7 +146,7 @@ try {
   el('wave').onclick = () => { avatar.wave(); say('Ciao! ✦'); };
   if (!renderer.getContext().isContextLost()) {
     el('commands').disabled = false;
-    say('Studio cel shading · modello in lavorazione');
+    say(`${modelName} · modello in lavorazione`);
   }
 } catch (error) {
   console.error(error);
