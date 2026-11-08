@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <meta name="theme-color" content="#100c1b">
+  <meta name="description" content="Neliel: studio interattivo del personaggio 3D, con pose, espressioni e controlli touch.">
+  <title>Neliel · Character Lab</title>
+  <link rel="stylesheet" href="../src/lab.css">
+</head>
+<body>
+  <main class="lab">
+    <header class="masthead">
+      <div class="brand"><svg viewBox="0 0 36 36" aria-hidden="true"><path d="M4 8h28L18 31 4 8Zm7 5h14l-7 12-7-12Z"/></svg><div><h1>Neliel</h1><p>CHARACTER LAB</p></div></div>
+      <span class="version">STUDIO 3D <span>·</span> 0.4 EXP</span>
+    </header>
+    <section class="stage" id="stage" aria-label="Scena 3D interattiva">
+      <div class="stage-label"><span></span> CEL SHADING / STUDY</div>
+      <p id="status" class="status" role="status">Caricamento di Neliel…</p>
+      <div id="failure" class="failure" hidden><p id="error"></p><button id="retry" type="button">Riprova</button></div>
+      <p class="guide" id="guide">Trascina per ruotare · Pizzica per zoomare · Doppio tap per ripristinare</p>
+    </section>
+    <aside class="panel" aria-label="Comandi di Neliel">
+      <header class="panel-head"><p>AVATAR / 01</p><h2>Studio personaggio</h2></header>
+      <fieldset id="commands" disabled>
+        <legend class="sr-only">Comandi avatar</legend>
+        <div class="command-group">
+          <p class="group-label">Inquadratura</p>
+          <div class="buttons">
+            <button type="button" id="home" aria-pressed="true">Figura intera</button>
+            <button type="button" id="portrait" aria-pressed="false">Primo piano</button>
+            <button type="button" id="zoom-in" aria-label="Avvicina la camera">Zoom +</button>
+            <button type="button" id="zoom-out" aria-label="Allontana la camera">Zoom −</button>
+          </div>
+        </div>
+        <div class="command-group">
+          <p class="group-label">Aspetto</p>
+          <div class="buttons">
+            <button type="button" id="outfit">Outfit <span id="outfit-label">Notte</span></button>
+            <button type="button" id="outline" aria-pressed="false">Contorni sottili</button>
+            <button type="button" id="hair">Capelli <span id="hair-label">Lunghi</span></button>
+          </div>
+        </div>
+        <div class="command-group">
+          <p class="group-label">Interazioni</p>
+          <div class="buttons">
+            <button type="button" id="pose">Posa <span id="pose-label">Neutra</span></button>
+            <button type="button" id="expression">Espressione <span id="expression-label">Neutra</span></button>
+            <button type="button" id="pause" aria-pressed="false">Ferma animazione</button>
+            <button type="button" id="wave" class="accent">✦ Saluta</button>
+          </div>
+        </div>
+      </fieldset>
+      <p class="footnote">NELIEL STUDIO <span>✦</span> STUDIO SPERIMENTALE</p>
+    <p class="footnote"><a href="../">Apri il prototipo 0.3</a></p>
+    </aside>
+  </main>
+  <noscript>Attiva JavaScript per visualizzare il personaggio 3D.</noscript>
+  <script type="module">
+    import('../src/cel-main.js').catch(error => {
+      console.error(error);
+      document.querySelector('#status').hidden = true;
+      document.querySelector('#error').textContent = 'Impossibile avviare la scena 3D. Verifica la connessione e il supporto WebGL.';
+      document.querySelector('#failure').hidden = false;
+      document.querySelector('#retry').onclick = () => location.reload();
+    });
+  </script>
+</body>
+</html>

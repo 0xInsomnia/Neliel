@@ -13,8 +13,9 @@ const expressions = [
   { name: 'Occhiolino', weights: { wink: 1, smile: .58 } },
 ];
 
-export async function loadAvatar(url, reducedMotion) {
+export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null) {
   const { scene } = await new GLTFLoader().loadAsync(url.href);
+  const materialController = prepareMaterials(scene);
   const root = new Group();
   root.rotation.y = Math.PI;
   root.scale.x = 1.08;
@@ -60,6 +61,7 @@ export async function loadAvatar(url, reducedMotion) {
 
   return {
     root,
+    setOutlines: value => materialController?.setOutlines(value),
     changePose() {
       pose = (pose + 1) % poses.length;
       return poses[pose].name;
@@ -84,6 +86,7 @@ export async function loadAvatar(url, reducedMotion) {
     },
     wave() { waveTime = 2.35; },
     update(delta) {
+      materialController?.update();
       time += delta;
       const motion = reducedMotion.matches ? 0 : 1;
       const goal = poses[pose];

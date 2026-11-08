@@ -1,3 +1,17 @@
+## Studio cel shading sperimentale
+
+Nuovo studio separato: https://0xinsomnia.github.io/Neliel/cel-studio/
+
+Materiali toon, viso con ramp morbida, occhi dipinti, riflessi sui capelli,
+contorni opzionali e pausa animazione. **La mesh è ancora la base 0.3, non un
+modello fedele definitivo.** 11 test automatici passati; verifica visiva GPU
+bloccata da WebGL disabilitato nel browser della sessione.
+
+Analisi, verifiche e limiti: [docs/CEL_STUDIO.md](docs/CEL_STUDIO.md).
+La demo originale sotto rimane disponibile senza il nuovo rendering.
+
+---
+
 # Neliel · Character Lab 0.3
 
 Studio 3D del personaggio Neliel, con mesh deformabile e comandi touch.
