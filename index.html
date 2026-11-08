@@ -1,34 +1,50 @@
-<!doctype html>
-<html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><title>Neliel — Prototype 0.1</title><style>
-*{box-sizing:border-box}body{margin:0;background:#0b0918;color:#f7edff;font-family:system-ui,sans-serif;overflow:hidden}canvas{display:block}header{position:absolute;top:0;left:0;right:0;padding:16px 18px;background:linear-gradient(#090715bb,transparent);pointer-events:none}h1{margin:0;font-size:22px;letter-spacing:2px}small{color:#c4a8f2}#panel{position:absolute;bottom:18px;left:12px;right:12px;display:flex;gap:8px;flex-wrap:wrap;justify-content:center}button{border:1px solid #a96dff88;background:#26153dcf;color:white;border-radius:16px;padding:12px 14px;font-weight:600;backdrop-filter:blur(8px)}#message{position:absolute;top:72px;left:12px;right:12px;text-align:center;pointer-events:none}#message span{display:inline-block;background:#1a1235d9;border:1px solid #a96dff77;border-radius:15px;padding:9px 14px}#error{position:absolute;top:50%;left:10%;right:10%;text-align:center;color:#ffcaca}
-</style></head><body><header><h1>NELIEL <small>α 0.1</small></h1><small>Trascina per esplorare · pizzica per zoomare</small></header><div id="message"><span>Benvenuto nella mia stanza ✨</span></div><div id="panel"><button id="look">Cambia outfit</button><button id="wave">Saluta</button><button id="sit">Riposa</button><button id="reset">Vista iniziale</button></div><div id="error"></div>
+<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"><meta name="theme-color" content="#100c21"><title>Neliel · Character Lab</title><style>
+*{box-sizing:border-box}html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#100c21;color:#f9efff;font-family:system-ui,-apple-system,sans-serif}canvas{display:block;touch-action:none}header{position:absolute;top:0;left:0;right:0;padding:env(safe-area-inset-top,12px) 16px 12px;pointer-events:none;background:linear-gradient(#100c21dd,transparent)}h1{font-size:21px;letter-spacing:.2em;margin:0;font-weight:650}header p{font-size:12px;color:#c7b6df;margin:5px 0}#status{position:absolute;top:86px;left:50%;transform:translateX(-50%);max-width:90%;min-width:180px;text-align:center;padding:9px 14px;border-radius:20px;background:#160e2dcc;border:1px solid #9b6adc55;font-size:13px;pointer-events:none}#controls{position:absolute;bottom:calc(14px + env(safe-area-inset-bottom));left:8px;right:8px;display:flex;justify-content:center;flex-wrap:wrap;gap:7px}button{font:600 13px system-ui;background:#26153de8;border:1px solid #a980e188;color:#fff;border-radius:16px;padding:12px;min-height:43px}button:active{background:#7445a7}#hint{position:absolute;right:12px;top:50%;font-size:11px;color:#d5c4e8a8;writing-mode:vertical-rl;pointer-events:none}#fatal{position:absolute;top:45%;left:12%;right:12%;text-align:center;color:#ffc5c5}</style></head><body><header><h1>NELIEL <span style="font-size:11px;color:#bc90ff">0.2 · CHARACTER LAB</span></h1><p>Trascina: ruota · Due dita: zoom · Doppio tap: ripristina</p></header><div id="status">Un nuovo inizio ✦</div><div id="hint">PROTOTIPO PROCEDURALE · NON MODELLO DEFINITIVO</div><div id="controls"><button id="outfit">Outfit</button><button id="pose">Posa</button><button id="wave">Saluta</button><button id="hair">Capelli</button><button id="home">Reset vista</button></div><div id="fatal"></div>
 <script type="module">
-import * as THREE from 'https://esm.sh/three@0.170.0';
-const scene=new THREE.Scene();scene.background=new THREE.Color(0x0e1026);scene.fog=new THREE.Fog(0x0e1026,14,35);
-const camera=new THREE.PerspectiveCamera(55,innerWidth/innerHeight,.1,100);const renderer=new THREE.WebGLRenderer({antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=THREE.SRGBColorSpace;document.body.prepend(renderer.domElement);
-scene.add(new THREE.HemisphereLight(0xbbaaff,0x292036,2.2));const light=new THREE.DirectionalLight(0xffddff,3);light.position.set(3,7,5);scene.add(light);const purple=new THREE.PointLight(0x8b4dff,35,12);purple.position.set(-3,3,-2);scene.add(purple);
-const mat=(c)=>new THREE.MeshToonMaterial({color:c});const skin=mat(0xf5c7bd),hair=mat(0xdedbfa),eye=mat(0x9a59ff),black=mat(0x151222),white=mat(0xeae5ff),accent=mat(0x9153d9),wall=mat(0x24203b),floor=mat(0x393047);
-function box(w,h,d,m,x,y,z,parent=scene){const a=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),m);a.position.set(x,y,z);parent.add(a);return a}
-function orb(r,m,x,y,z,parent=scene){const a=new THREE.Mesh(new THREE.SphereGeometry(r,16,12),m);a.position.set(x,y,z);parent.add(a);return a}
-box(12,.15,10,floor,0,-.1,0);box(12,5,.15,wall,0,2.4,-5);box(.15,5,10,wall,-6,2.4,0);box(.15,5,10,wall,6,2.4,0);
-box(3,.12,1.7,black,-3,.55,-2.7);box(3,.5,1.6,accent,-3,.3,-2.7);box(2.6,.18,.8,white,-3,.68,-3.1);box(1.6,.6,.8,black,3,.5,-3);box(1.8,.12,.9,accent,3,.85,-3);box(2,.08,.1,accent,0,3.6,-4.87);
-for(let i=0;i<7;i++)box(.08,.08,.08,accent,-4.8+i*.8,2.8,-4.85);
-const avatar=new THREE.Group();scene.add(avatar);avatar.position.set(0,0,0);
-const torso=box(.65,.85,.33,black,0,1.65,0,avatar);const hips=box(.62,.3,.38,black,0,1.07,0,avatar);
-const head=orb(.35,skin,0,2.43,0,avatar);orb(.37,hair,0,2.61,-.08,avatar);
-for(const s of [-1,1]){orb(.065,eye,s*.13,2.46,.315,avatar);box(.22,.75,.22,black,s*.21,.59,0,avatar);box(.18,.74,.19,skin,s*.48,1.62,0,avatar);box(.14,.95,.14,hair,s*.24,2.08,-.22,avatar)}
-const tattoo=box(.09,.28,.012,accent,.32,.71,.12,avatar);
-const smile=box(.15,.025,.015,accent,0,2.28,.326,avatar);
-const clock=new THREE.Clock();let outfit=0,waveUntil=0,rest=false,angle=.25,elev=.23,dist=6,drag=false,px=0,py=0;
-function say(t){document.querySelector('#message span').textContent=t}
-document.querySelector('#look').onclick=()=>{outfit=1-outfit;torso.material=outfit?white:black;hips.material=outfit?white:black;say(outfit?'Oggi scelgo il bianco e viola.':'Nero e viola, decisamente il mio stile.')};
-document.querySelector('#wave').onclick=()=>{waveUntil=clock.elapsedTime+2;say('Ciao! Sono Neliel. Piacere di vederti!')};
-document.querySelector('#sit').onclick=()=>{rest=!rest;say(rest?'Mi rilasso un momento.':'Eccomi di nuovo!')};
-document.querySelector('#reset').onclick=()=>{angle=.25;elev=.23;dist=6;say('Vista ripristinata.')};
-renderer.domElement.addEventListener('pointerdown',e=>{drag=true;px=e.clientX;py=e.clientY;renderer.domElement.setPointerCapture(e.pointerId)});
-renderer.domElement.addEventListener('pointerup',()=>drag=false);
-renderer.domElement.addEventListener('pointermove',e=>{if(!drag)return;angle+=(e.clientX-px)*.007;elev=Math.max(-.2,Math.min(1.1,elev+(e.clientY-py)*.005));px=e.clientX;py=e.clientY});
-renderer.domElement.addEventListener('wheel',e=>{dist=Math.max(2.5,Math.min(12,dist+e.deltaY*.005))},{passive:true});
-function render(){requestAnimationFrame(render);const t=clock.getElapsedTime();avatar.position.y=(rest?-.28:0)+Math.sin(t*1.5)*.018;avatar.rotation.y=Math.sin(t*.5)*.08;avatar.rotation.z=t<waveUntil?Math.sin(t*14)*.04:0;camera.position.set(Math.sin(angle)*dist,2+Math.sin(elev)*dist*.55,Math.cos(angle)*dist);camera.lookAt(0,1.45,0);renderer.render(scene,camera)}render();
-addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+import * as T from 'https://esm.sh/three@0.170.0';
+try {
+const scene=new T.Scene();scene.background=new T.Color(0x151129);scene.fog=new T.Fog(0x151129,10,24);
+const camera=new T.PerspectiveCamera(39,innerWidth/innerHeight,.1,100);const renderer=new T.WebGLRenderer({antialias:true,alpha:false});renderer.setPixelRatio(Math.min(devicePixelRatio,2));renderer.setSize(innerWidth,innerHeight);renderer.outputColorSpace=T.SRGBColorSpace;renderer.toneMapping=T.ACESFilmicToneMapping;renderer.toneMappingExposure=1.35;document.body.prepend(renderer.domElement);
+scene.add(new T.HemisphereLight(0xe3d6ff,0x332042,2.5));let key=new T.DirectionalLight(0xffe7ee,3.1);key.position.set(3,7,6);scene.add(key);let rim=new T.DirectionalLight(0x9c65ff,2.8);rim.position.set(-4,4,-3);scene.add(rim);
+const M=(color)=>new T.MeshToonMaterial({color,gradientMap:null});const skin=M(0xf1c3bb),shadowSkin=M(0xd9a5aa),silver=M(0xe9e7ff),silverDark=M(0xaba7d7),iris=M(0x9255e9),dark=M(0x181326),ink=M(0x21122d),violet=M(0x9b62ed),metal=M(0xd8b6ff),white=M(0xf1ebff),gold=M(0xe9c7ff);
+const mesh=(geometry,material,parent,x=0,y=0,z=0)=>{const a=new T.Mesh(geometry,material);a.position.set(x,y,z);parent.add(a);return a};
+const ball=(parent,x,y,z,sx,sy,sz,mat)=>{const o=mesh(new T.SphereGeometry(1,20,14),mat,parent,x,y,z);o.scale.set(sx,sy,sz);return o};
+const cone=(parent,x,y,z,r1,r2,h,mat,seg=10)=>mesh(new T.CylinderGeometry(r1,r2,h,seg),mat,parent,x,y,z);
+const line=(parent,a,b,r,mat)=>{let d=new T.Vector3().subVectors(new T.Vector3(...b),new T.Vector3(...a));let obj=mesh(new T.CylinderGeometry(r*.8,r,d.length(),9),mat,parent);obj.position.copy(new T.Vector3(...a).add(new T.Vector3(...b)).multiplyScalar(.5));obj.quaternion.setFromUnitVectors(new T.Vector3(0,1,0),d.normalize());return obj};
+const room=scene;let floor=mesh(new T.CylinderGeometry(3.7,3.9,.12,64),M(0x302344),room,0,-.12,0);let circle=mesh(new T.TorusGeometry(3.15,.017,8,96),violet,room,0,-.04,0);circle.rotation.x=Math.PI/2;
+for(let i=0;i<9;i++){let a=i*Math.PI*2/9;ball(room,Math.cos(a)*3.1,.06,Math.sin(a)*3.1,.045,.045,.045,metal)}
+const root=new T.Group();scene.add(root);root.position.y=0;
+const pelvis=new T.Group();root.add(pelvis);
+const legGroups=[];for(const s of [-1,1]){let leg=new T.Group();leg.position.set(s*.18,1.02,0);pelvis.add(leg);legGroups.push(leg);ball(leg,0,-.27,0,.18,.42,.19,skin);ball(leg,0,-.72,.02,.14,.34,.15,dark);ball(leg,0,-1.03,.12,.16,.11,.28,dark)}
+const torso=new T.Group();torso.position.y=1.13;pelvis.add(torso);ball(torso,0,.46,0,.37,.52,.23,dark);ball(torso,0,.01,0,.35,.22,.23,dark);
+const bodice=ball(torso,0,.55,.185,.32,.32,.09,white);const bodicePanel=ball(torso,0,.61,.265,.11,.23,.027,violet);
+const belt=ball(torso,0,.08,.03,.35,.09,.24,violet);
+const collar=cone(torso,0,.98,0,.115,.13,.19,skin);
+for(let s of [-1,1]){line(torso,[s*.21,.94,.04],[s*.32,.64,.06],.045,metal)}
+const arms=[];for(const s of [-1,1]){let arm=new T.Group();arm.position.set(s*.39,.84,0);torso.add(arm);arms.push(arm);ball(arm,s*.06,-.24,0,.15,.3,.15,skin);ball(arm,s*.09,-.58,.03,.12,.28,.13,skin);ball(arm,s*.1,-.85,.04,.105,.14,.085,skin);ball(arm,s*.06,-.06,0,.17,.15,.17,dark);line(arm,[s*.1,-.49,.12],[s*.1,-.67,.13],.032,violet)}
+const neck=ball(torso,0,1.04,0,.12,.15,.13,skin);
+const head=new T.Group();head.position.set(0,1.33,0);torso.add(head);
+ball(head,0,.12,0,.32,.41,.30,skin);ball(head,0,-.14,.13,.25,.22,.21,skin);
+for(let s of [-1,1]){let ear=ball(head,s*.35,.1,-.03,.18,.085,.09,skin);ear.rotation.z=s*.3;ball(head,s*.385,.1,.03,.08,.035,.03,shadowSkin)}
+for(let s of [-1,1]){ball(head,s*.135,.16,.286,.105,.13,.028,white);ball(head,s*.135,.16,.312,.062,.097,.022,iris);ball(head,s*.135,.16,.333,.032,.076,.015,ink);ball(head,s*.115,.204,.348,.021,.025,.009,white);let brow=line(head,[s*.045,.325,.288],[s*.23,.29,.266],.018,ink);brow.rotation.z=s*.05;ball(head,s*.17,-.05,.282,.1,.038,.01,shadowSkin)}
+line(head,[-.055,-.17,.27],[.055,-.17,.27],.013,ink);ball(head,0,-.015,.314,.04,.05,.026,skin);
+const hairGroup=new T.Group();head.add(hairGroup);ball(hairGroup,0,.35,-.07,.36,.33,.31,silver);
+for(let s of [-1,1]){let strand=ball(hairGroup,s*.285,-.12,-.08,.115,.54,.15,silver);strand.rotation.z=s*.07;let bang=ball(hairGroup,s*.12,.38,.21,.18,.22,.15,silver);bang.rotation.z=s*.42;let long=ball(hairGroup,s*.22,-.56,-.22,.15,.67,.14,silverDark);long.rotation.z=s*.12}
+const backHair=ball(hairGroup,0,-.54,-.24,.27,.83,.18,silver);
+const thighTattoo=new T.Group();legGroups[1].add(thighTattoo);thighTattoo.position.set(.04,-.32,.182);for(let i=0;i<3;i++){let shape=mesh(new T.TorusGeometry(.055+i*.034,.009,5,4),ink,thighTattoo,0,.015,0);shape.rotation.z=Math.PI/4+i*.12}
+let outfit=0,hairMode=0,pose=0,waveEnd=0;const status=document.querySelector('#status');const say=s=>status.textContent=s;
+document.querySelector('#outfit').onclick=()=>{outfit=1-outfit;const m=outfit?dark:white;bodice.material=m;bodicePanel.material=outfit?metal:violet;say(outfit?'Outfit: notte viola':'Outfit: perla e lavanda')};
+document.querySelector('#hair').onclick=()=>{hairMode=1-hairMode;hairGroup.scale.y=hairMode?.78:1;say(hairMode?'Capelli raccolti (studio)':'Capelli lunghi argento')};
+document.querySelector('#pose').onclick=()=>{pose=(pose+1)%3;say(['Posa naturale','Posa dinamica','Posa elegante'][pose])};
+const clock=new T.Clock();document.querySelector('#wave').onclick=()=>{waveEnd=clock.elapsedTime+2.3;say('Ciao! ✦')};
+let az=.12,el=.12,dist=6.4;function reset(){az=.12;el=.12;dist=6.4}document.querySelector('#home').onclick=()=>{reset();say('Vista ripristinata')};
+const touches=new Map();let lastDist=0,lastTap=0;
+const canvas=renderer.domElement;canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(e.pointerType==='touch'&&Date.now()-lastTap<290){reset()}lastTap=Date.now()});
+canvas.addEventListener('pointermove',e=>{if(!touches.has(e.pointerId))return;const prev=touches.get(e.pointerId);touches.set(e.pointerId,{x:e.clientX,y:e.clientY});if(touches.size===1){az-=(e.clientX-prev.x)*.009;el=Math.max(-.5,Math.min(.8,el+(e.clientY-prev.y)*.006))}else if(touches.size===2){const pts=[...touches.values()];const d=Math.hypot(pts[0].x-pts[1].x,pts[0].y-pts[1].y);if(lastDist)dist=Math.max(2.8,Math.min(11,dist*lastDist/d));lastDist=d}});
+for(let ev of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(ev,e=>{touches.delete(e.pointerId);lastDist=0});
+canvas.addEventListener('wheel',e=>{dist=Math.max(2.8,Math.min(11,dist+e.deltaY*.005))},{passive:true});
+function animate(){requestAnimationFrame(animate);let t=clock.getElapsedTime();pelvis.position.y=Math.sin(t*1.7)*.016;torso.rotation.z=Math.sin(t*.75)*.013;head.rotation.y=Math.sin(t*.4)*.09;head.rotation.z=Math.sin(t*.6)*.025;arms[0].rotation.z=pose===1?-.5:pose===2?-.2:.04;arms[1].rotation.z=t<waveEnd?-.9+Math.sin(t*13)*.24:pose===1?.5:pose===2?.2:-.04;legsPose();camera.position.set(Math.sin(az)*Math.cos(el)*dist,1.35+Math.sin(el)*dist,Math.cos(az)*Math.cos(el)*dist);camera.lookAt(0,1.43,0);renderer.render(scene,camera)}
+function legsPose(){legGroups[0].rotation.x=pose===1?.12:0;legGroups[1].rotation.x=pose===1?-.12:0}
+animate();addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+}catch(e){document.querySelector('#fatal').textContent='Errore 3D: '+e.message;console.error(e)}
 </script></body></html>
