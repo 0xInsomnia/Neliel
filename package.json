@@ -1,0 +1,13 @@
+{
+  "name": "neliel",
+  "version": "0.3.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test tests/*.test.js && node tools/validate-avatar.js",
+    "serve": "python3 -m http.server 8080"
+  },
+  "devDependencies": {
+    "gltf-validator": "2.0.0-dev.3.10"
+  }
+}

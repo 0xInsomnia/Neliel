@@ -1,0 +1,90 @@
+:root {
+  color-scheme: dark;
+  font: 15px system-ui, sans-serif;
+  background: #100c1b;
+  color: #f5efff;
+  --muted: #c4b5db;
+  --violet: #ca9eff;
+  --line: #b985ff35;
+}
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; }
+[hidden] { display: none !important; }
+.lab {
+  width: min(1440px, 100%);
+  min-height: 100svh;
+  margin: auto;
+  padding: max(12px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 286px;
+  grid-template-rows: auto minmax(470px, 1fr);
+  gap: 14px;
+}
+.masthead { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: center; padding: 3px 2px 9px; }
+.brand { display: flex; gap: 11px; align-items: center; }
+.brand svg { width: 35px; fill: none; stroke: #d6a7ff; stroke-width: 1.7; filter: drop-shadow(0 0 8px #a04bea); }
+h1, h2, p { margin: 0; }
+h1 { font-size: 28px; line-height: 1; letter-spacing: -.04em; font-weight: 650; }
+.brand p, .version, .stage-label, .panel-head p, .group-label, .footnote {
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .14em;
+  color: var(--muted);
+}
+.brand p { margin-top: 5px; }
+.version { border: 1px solid var(--line); padding: 7px 11px; border-radius: 100px; }
+.version span, .footnote span { color: var(--violet); }
+.stage {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  background: radial-gradient(ellipse at 50% 43%, #41305e, #151021 75%);
+}
+.stage canvas { display: block; width: 100%; height: 100%; position: absolute; inset: 0; touch-action: none; cursor: grab; }
+.stage canvas:active { cursor: grabbing; }
+.stage-label, .status, .guide { position: absolute; z-index: 1; pointer-events: none; }
+.stage-label { top: 17px; left: 16px; }
+.stage-label span { display: inline-block; width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: #d6a7ff; box-shadow: 0 0 9px #bf6cff; }
+.status { top: 14px; right: 12px; max-width: 58%; border: 1px solid var(--line); border-radius: 30px; background: #151020e0; padding: 5px 10px; font-size: 11px; }
+.guide { inset: auto 8px 10px; text-align: center; font-size: 11px; color: #e0d3f2; }
+.panel { border-radius: 20px; border: 1px solid var(--line); background: #181123; padding: 18px; display: flex; flex-direction: column; }
+.panel-head { margin-bottom: 16px; }
+.panel-head p { color: var(--violet); margin-bottom: 5px; }
+.panel h2 { font-size: 19px; font-weight: 630; }
+fieldset { border: 0; margin: 0; padding: 0; min-inline-size: 0; }
+.command-group + .command-group { margin-top: 17px; }
+.group-label { margin-bottom: 6px; text-transform: uppercase; }
+.buttons { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
+button {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  min-height: 45px;
+  background: #231a32;
+  color: #f5efff;
+  font: 600 13px system-ui, sans-serif;
+  cursor: pointer;
+  padding: 5px 6px;
+  touch-action: manipulation;
+}
+button span { color: #d8b9fb; display: block; font-size: 11px; font-weight: 450; }
+button[aria-pressed="true"], button:active { background: #41295e; border-color: #bb85fb; }
+button:focus-visible, canvas:focus-visible { outline: 2px solid #e3bcff; outline-offset: -3px; }
+button:disabled { opacity: .52; cursor: default; }
+.accent { grid-column: 1 / -1; background: #4a2869; }
+.footnote { margin-top: auto; padding-top: 18px; font-size: 9px; }
+.failure { position: absolute; z-index: 2; top: 38%; inset-inline: 10%; text-align: center; border: 1px solid var(--line); border-radius: 12px; padding: 16px; background: #180e28; }
+.failure button { margin-top: 12px; padding-inline: 20px; }
+.sr-only { position: absolute; width: 1px; height: 1px; clip-path: inset(50%); overflow: hidden; }
+@media (max-width: 680px) {
+  .lab { grid-template-columns: 1fr; grid-template-rows: auto minmax(390px, 63svh) auto; gap: 8px; padding-inline: 8px; }
+  .masthead { padding: 1px 5px 4px; }
+  .panel { padding: 10px; }
+  .panel-head, .footnote { display: none; }
+  fieldset { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .command-group + .command-group { margin-top: 0; }
+  .command-group:last-child { grid-column: 1 / -1; }
+  .command-group:last-child .buttons { grid-template-columns: 1fr 1fr 1fr; }
+  .accent { grid-column: auto; }
+  .guide { font-size: 9px; }
+}
