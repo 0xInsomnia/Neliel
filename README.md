@@ -1,3 +1,15 @@
+## Revisione del modello 06 — 9 novembre 2026
+
+Ridotta la dominanza della testa rispetto alle spalle: larghezza -8,5% nella
+zona superiore, profondità -5,5%, sommità abbassata fino a 20 mm. Il raccordo
+al collo è graduale; la lunghezza della parte inferiore del volto è conservata.
+La trasformazione interessa tutte le superfici sovrapposte e i morph facciali.
+
+Verifica: 16 test passati, zero errori/warning glTF. Confronto CPU fronte,
+profilo e retro in bind pose. **Il browser disponibile ha WebGL disabilitato:**
+questa revisione non è stata verificata con rendering toon interattivo.
+Restano da completare corpo, outfit, acconciatura e somiglianza del volto.
+
 ## Revisione del modello 05 — 9 novembre 2026
 
 Primo affinamento verso le proporzioni adulte delle immagini originali:

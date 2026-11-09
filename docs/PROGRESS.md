@@ -1,16 +1,22 @@
-# Recovery checkpoint — 9 November 2026, revision 05
+# Recovery checkpoint — 9 November 2026, revision 06
 
-Base: remote revision 04, 900a751. User confirms original images are authoritative.
-Genshin guides rendering quality, not the character identity or anatomy.
+Base: remote revision 05, b4a1035. Original private references remain authoritative.
+User wants a visibly adult anime character, with Genshin as rendering reference.
 
-Completed: narrower eye opening, subtly tapered cheeks, longer lower face.
-One common map transforms face and all four morph endpoints, normals recomputed.
-Script tools/refine_adult_face.py accepts only r04; do not apply cumulatively.
-16 tests pass; both GLBs have zero errors/warnings. WebGL software inspection:
-front before/after, profile, close rear, smile, surprise, wink and mobile layout.
-No claim of final likeness or verified phone performance/touch.
+Completed: tools/refine_head_balance.py and regenerated neliel-refined.glb.
+Common map across every mesh layer and morph endpoint: upper head X -8.5%,
+Z -5.5%, crown height up to -20 mm. Smooth neck transition; lower-face length
+retained. Production studio labels updated to revision 06 / 0.4.6 EXP.
 
-Next: compare private initial images, refine face/ear likeness and hair attachment,
-resolve fringe intersections, then body proportions and outfit geometry.
-Current head/hair still too rounded, mouth/nose simplified, ponytail uniform.
-Save small checkpoints exclusively in this repository. Do not publish references.
+Validation: 16 tests pass; both GLBs zero errors/warnings. Additional checks
+preserve skeleton, skins, weights, UVs, materials and lower-body positions;
+already-r06 inputs rejected. CPU before/after front/profile/rear inspected.
+Managed browser explicitly reports WebGL disabled. NO interactive toon visual
+verification in this session; do not describe CPU views as screenshots of app.
+
+Next: verify r06 in WebGL, including expressions, head turns and hair motion;
+then sculpt hair attachment/ponytail strands, nose/mouth/ears, body and outfit.
+Do not keep shrinking the eyes to compensate for an unfinished body.
+Current ponytail remains uniform; outfit still differs substantially from concept.
+Use original references, not the previous screenshots as identity targets.
+Save small coherent checkpoints only in 0xInsomnia/Neliel. References stay private.

@@ -152,3 +152,30 @@ fronte prima/dopo, profilo, retro ravvicinato, sorriso, sorpresa e occhiolino.
 Il confronto è incrementale: non certifica somiglianza completa al concept,
 prestazioni o touch su S24. Le immagini originali prevalgono su qualsiasi
 interpretazione dello stile; i riferimenti privati non sono pubblicati.
+
+
+## Revisione 06 — equilibrio testa/spalle
+
+`tools/refine_head_balance.py` accetta solo la revisione 05, con sorgente distinta
+dall'output. Una mappatura comune restringe X fino all'8,5% e Z fino al 5,5%,
+con raccordo smoothstep fra Y=1.37 e 1.46. La sommità viene abbassata fino a
+20 mm fra Y=1.53 e 1.68, preservando la lunghezza del volto sotto gli occhi.
+È una modifica della mesh, non della camera. Tutti gli strati e gli endpoint
+dei morph ricevono la stessa mappatura; normali ricalcolate.
+
+Dopo aver ricostruito r05 in un file temporaneo con i passaggi sopra:
+
+```sh
+python3 tools/refine_head_balance.py /tmp/neliel-r05.glb assets/neliel-refined.glb
+npm test
+```
+
+Verificati invariati: nodi, skin, pesi, UV, texture, materiali e posizioni
+sotto Y=1.37. Testato il rifiuto di input già r06. 16 test passati; entrambi
+i GLB con zero errori e zero warning. Confrontati prima/dopo fronte, profilo
+e retro con `inspect_mesh.py` (CPU, bind pose, senza toon o animazioni).
+Il browser gestito non crea un contesto WebGL: manca la verifica grafica
+interattiva della revisione. I pivot del rig restano quelli precedenti;
+verificare pose ampie e collisioni della coda in una prossima sessione WebGL.
+La silhouette è meno larga, ma coda uniforme, attaccatura e ciocche richiedono
+ancora modellazione; corpo e outfit non sono stati completati.
