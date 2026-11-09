@@ -1,3 +1,22 @@
+## Ripristino integrità revisione 06 — 9 novembre 2026
+
+Il commit `50e3ff2` aveva pubblicato un GLB troncato a 16.384 byte:
+i controlli descritti sotto non attestavano quindi la copia remota.
+Il modello è stato ricostruito dagli script salvati: **2.923.312 byte**,
+16 test passati e zero errori/warning glTF. Viste CPU fronte/profilo/retro
+controllate; questa verifica non certifica il rendering toon o il touch reale.
+
+Per rigenerare tutte le revisioni dalla base, validando prima di sostituire:
+
+```sh
+npm ci --ignore-scripts
+python3 tools/rebuild_refined.py
+npm test
+```
+
+Il caricamento nei test segnala esplicitamente una lunghezza GLB incompleta.
+La ricostruzione usa file temporanei e sostituzione atomica dell'asset.
+
 ## Revisione del modello 06 — 9 novembre 2026
 
 Ridotta la dominanza della testa rispetto alle spalle: larghezza -8,5% nella

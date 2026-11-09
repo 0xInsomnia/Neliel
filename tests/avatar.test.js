@@ -8,7 +8,13 @@ import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 // Only material texture references are removed in this in-memory test copy.
 async function loadGeometry(file) {
   const source = fs.readFileSync(new URL(`../assets/${file}`, import.meta.url));
+  assert.ok(source.length >= 20, `${file}: incomplete GLB header`);
+  assert.equal(source.readUInt32LE(0), 0x46546c67, `${file}: invalid GLB magic`);
+  assert.equal(source.readUInt32LE(4), 2, `${file}: expected GLB version 2`);
+  assert.equal(source.readUInt32LE(8), source.length, `${file}: truncated GLB (declared length differs from actual bytes)`);
   const jsonLength = source.readUInt32LE(12);
+  assert.equal(source.readUInt32LE(16), 0x4e4f534a, `${file}: missing JSON chunk`);
+  assert.ok(20 + jsonLength + 8 <= source.length, `${file}: incomplete JSON/BIN chunks`);
   const doc = JSON.parse(source.subarray(20, 20 + jsonLength));
   doc.materials = doc.materials.map(material => ({ name: material.name }));
   delete doc.textures;
