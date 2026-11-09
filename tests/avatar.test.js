@@ -93,3 +93,22 @@ test(`${file}: each facial expression deforms vertices without invalid positions
   }
 });
 }
+
+test('portrait locks follow the head without responding to arm movement', async () => {
+  const scene = await loadGeometry('neliel-refined.glb');
+  const locks = scene.getObjectByName('CioccheLaterali');
+  assert.ok(locks?.isSkinnedMesh, 'temple locks must be an articulated mesh');
+  const samples = [0, 199, 399, 599, 799];
+  const positions = () => samples.map(i => locks.getVertexPosition(i, new Vector3()));
+  const before = positions();
+  scene.getObjectByName('J_Bip_R_UpperArm').rotation.z = -.8;
+  scene.updateMatrixWorld(true);
+  positions().forEach((v, i) => assert.ok(v.distanceTo(before[i]) < 1e-6));
+  scene.getObjectByName('J_Bip_C_Head').rotation.z = .2;
+  scene.updateMatrixWorld(true);
+  const moved = positions();
+  moved.forEach(v => assert.ok(v.toArray().every(Number.isFinite)));
+  assert.ok(moved.every((v, i) => v.distanceTo(before[i]) > .001));
+  // Rigid head binding must preserve distances along each lock.
+  assert.ok(Math.abs(moved[0].distanceTo(moved[1]) - before[0].distanceTo(before[1])) < 1e-5);
+});

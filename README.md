@@ -1,3 +1,18 @@
+## Revisione del modello 03 — 9 novembre 2026
+
+Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) carica
+la revisione 03: parte inferiore del volto leggermente allungata, guance meno
+larghe e occhi lievemente più affusolati. Quattro ciocche laterali nuove seguono
+la testa; la frangia è meno larga e la radice della coda è sollevata.
+
+Verifica: **16 test passati**, GLB con **0 errori e 0 warning**. Questa revisione
+è stata anche eseguita in Chromium con WebGL software: controllati fronte,
+profilo, retro ravvicinato, sorriso, sorpresa, occhiolino, posa e layout mobile.
+Il controllo software non certifica prestazioni o touch su telefono reale.
+
+Il modello resta uno studio: capelli posteriori, ciocche dipinte, attaccatura,
+orecchie, outfit e proporzioni complessive richiedono ancora lavoro.
+
 ## Revisione del modello 02 — 9 novembre 2026
 
 Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) carica

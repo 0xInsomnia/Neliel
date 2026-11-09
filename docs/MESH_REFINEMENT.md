@@ -74,3 +74,37 @@ ampia copriva il volto: è stata ridotta prima di salvare l'asset finale.
 La coda resta una mesh semplice senza texture dipinta: non confondere la
 sua superficie uniforme nell'ispezione unlit con il risultato toon.
 Le immagini private di riferimento restano escluse dal repository.
+
+
+## Revisione 03 — proporzioni del viso e ciocche laterali
+
+`tools/refine_portrait.py` recupera e adatta il precedente esperimento locale
+(non pubblicato) delle ciocche laterali; non include le sue modifiche di colore.
+Input obbligatorio: revisione 02. Lo script rifiuta input diversi per evitare
+l'accumulo accidentale delle deformazioni e la duplicazione delle ciocche.
+
+- Parte inferiore del volto allungata fino a 8 mm, guance ridotte fino al 4,5%.
+- Apertura verticale degli occhi leggermente ridotta e angolo esterno rialzato.
+- La stessa deformazione viene applicata alle posizioni finali dei quattro morph;
+  normali della base e dei morph ricalcolate, UV e pesi originali conservati.
+- Frangia laterale ridotta fino al 18%; radice della coda alzata e arretrata 25 mm.
+- Quattro superfici chiuse a sezione appiattita, 800 vertici complessivi, pesate
+  all'osso della testa tramite la skin della frangia. Non hanno fisica autonoma.
+- Test aggiuntivo: le ciocche seguono la testa, conservano le distanze e non
+  vengono trascinate dal movimento del braccio.
+
+Ricostruzione dalla base già presente nel repository:
+
+```sh
+python3 tools/refine_mesh.py assets/neliel.glb /tmp/neliel-revision02.glb
+python3 tools/refine_portrait.py /tmp/neliel-revision02.glb assets/neliel-refined.glb
+npm test
+```
+
+Controllo visivo: Chromium con SwiftShader, stesso studio e stessa camera per
+prima/dopo. Ispezionati fronte, profilo, retro ravvicinato, espressioni sorriso,
+sorpresa e occhiolino, posa Curiosa e viewport 393 × 852. Il retro ravvicinato
+mostra soprattutto la coda, non è una verifica completa della silhouette posteriore.
+La coda resta uniforme, la chioma presenta sovrapposizioni e l'attaccatura va
+rimodellata. Le nuove ciocche sono rigide rispetto alla testa: collisioni nelle
+animazioni ampie e prestazioni reali su S24 non sono certificate.
