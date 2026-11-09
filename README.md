@@ -1,3 +1,15 @@
+## Revisione del modello 05 — 9 novembre 2026
+
+Primo affinamento verso le proporzioni adulte delle immagini originali:
+apertura degli occhi ridotta, guance leggermente meno tonde e parte inferiore
+del volto allungata fino a 6 mm. Le immagini iniziali restano il riferimento
+per identità, anatomia, capelli e outfit; Genshin è un riferimento di rendering.
+
+16 test passati; entrambi i GLB con zero errori e zero warning. Controllati
+fronte prima/dopo, profilo, retro ravvicinato ed espressioni con WebGL software.
+È un ritocco incrementale, non il volto definitivo: restano proporzioni della
+testa, naso/bocca, orecchie, capelli, corpo e outfit da rifinire.
+
 ## Revisione del modello 04 — 9 novembre 2026
 
 Ridotto l'arco superiore della coda: altezza massima abbassata di circa 6,3 cm

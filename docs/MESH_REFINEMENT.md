@@ -130,3 +130,25 @@ coda; nodi, skin, pesi, UV, colori, morph e vertici sotto Y=1.63 sono identici.
 Controllati fronte, profilo e retro a figura intera in Chromium/SwiftShader.
 Il raccordo della coda alla testa e le sovrapposizioni richiedono ancora
 modellazione; la verifica non certifica collisioni dinamiche o touch reale.
+
+## Revisione 05 — proporzioni adulte del viso
+
+`tools/refine_adult_face.py` accetta solo revisione 04 e rifiuta input/output
+identici. La mappatura comune a tutti gli strati facciali allunga la parte
+inferiore fino a 6 mm, riduce le guance fino al 2,5% e riduce localmente
+l'apertura verticale degli occhi. Applica la stessa funzione agli endpoint dei
+quattro morph e ricalcola le normali. Topologia, rig, pesi e UV sono conservati.
+
+Dopo i tre comandi delle revisioni precedenti, generare r04 in un file temporaneo:
+
+```sh
+python3 tools/refine_crown.py /tmp/neliel-r03.glb /tmp/neliel-r04.glb
+python3 tools/refine_adult_face.py /tmp/neliel-r04.glb assets/neliel-refined.glb
+npm test
+```
+
+16 test passati, zero errori/warning glTF. Ispezione Chromium/SwiftShader:
+fronte prima/dopo, profilo, retro ravvicinato, sorriso, sorpresa e occhiolino.
+Il confronto è incrementale: non certifica somiglianza completa al concept,
+prestazioni o touch su S24. Le immagini originali prevalgono su qualsiasi
+interpretazione dello stile; i riferimenti privati non sono pubblicati.
