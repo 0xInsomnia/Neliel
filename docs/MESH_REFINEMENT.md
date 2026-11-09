@@ -108,3 +108,25 @@ mostra soprattutto la coda, non è una verifica completa della silhouette poster
 La coda resta uniforme, la chioma presenta sovrapposizioni e l'attaccatura va
 rimodellata. Le nuove ciocche sono rigide rispetto alla testa: collisioni nelle
 animazioni ampie e prestazioni reali su S24 non sono certificate.
+
+## Revisione 04 — arco superiore della coda
+
+`tools/refine_crown.py` accetta esclusivamente la revisione 03 e conserva
+la sorgente. Deforma solo posizioni e normali della coda con una funzione
+continua: 65 mm di riduzione massima teorica in Y e 22% di restringimento
+massimo teorico in X, attivati fra Y=1.63 e Y=1.79. La derivata verticale
+resta positiva, evitando ripiegamenti della superficie. Sull'asset presente
+il punto più alto passa da 1.77256 a 1.70971 metri.
+
+```sh
+python3 tools/refine_mesh.py assets/neliel.glb /tmp/neliel-r02.glb
+python3 tools/refine_portrait.py /tmp/neliel-r02.glb /tmp/neliel-r03.glb
+python3 tools/refine_crown.py /tmp/neliel-r03.glb assets/neliel-refined.glb
+npm test
+```
+
+Confronto degli accessor: cambiano esclusivamente POSITION e NORMAL della
+coda; nodi, skin, pesi, UV, colori, morph e vertici sotto Y=1.63 sono identici.
+Controllati fronte, profilo e retro a figura intera in Chromium/SwiftShader.
+Il raccordo della coda alla testa e le sovrapposizioni richiedono ancora
+modellazione; la verifica non certifica collisioni dinamiche o touch reale.

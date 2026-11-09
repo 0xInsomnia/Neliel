@@ -1,3 +1,15 @@
+## Revisione del modello 04 — 9 novembre 2026
+
+Ridotto l'arco superiore della coda: altezza massima abbassata di circa 6,3 cm
+nello spazio del modello, con restringimento graduale nella parte alta.
+Viso, espressioni, outfit, rig, pesi e punte inferiori sono invariati.
+È una correzione della silhouette, non la conclusione del lavoro sui capelli.
+
+Verifica: 16 test passati, entrambi i GLB con zero errori e zero warning.
+Ispezionate fronte, profilo e figura intera posteriore con WebGL software.
+Restano da rifinire il raccordo della coda, le sovrapposizioni e le superfici
+molto uniformi; corpo e outfit sono ancora da modellare.
+
 ## Revisione del modello 03 — 9 novembre 2026
 
 Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) carica
