@@ -21,6 +21,14 @@ def sculpt(p,kind):
   front=smooth(.015,.085,-z);lower=1-smooth(1.57,1.67,y)
   q[:,0]+=.016*front*lower
   q[:,1]+=.024*front*lower*smooth(-.01,.09,x)
+  # Reduce the bob silhouette and draw the temple locks down toward the neck.
+  # Smooth weights retain root positions and existing skinning at the crown.
+  side=smooth(.065,.095,ax)*(1-smooth(1.44,1.53,y))*smooth(-.04,.045,-z)
+  q[:,1]-=.055*side
+  q[:,0]*=1-.025*side
+  crown=smooth(1.51,1.64,y)
+  q[:,0]*=1-.035*crown
+  q[:,2]*=1-.035*crown
  elif kind=='Coda a ciocche':
   t=np.clip((1.58-y)/.84,0,1)
   q[:,1]-=.24*t**1.25
@@ -67,7 +75,15 @@ def refine(source,target):
    if 'NORMAL'in t:
     nn=normals(posed,triangles);nn[unused]=n[unused];a.set(t['NORMAL'],nn-n)
   a.set(pos_id,result);a.set(p['attributes']['NORMAL'],n)
- a.d['asset']['generator']='Neliel mesh study 01 / tools/refine_mesh.py'
+ # The source lash maps are white masks, not painted dark eyeliner.
+ # Factors are linear RGB; keep their textures and alpha silhouettes intact.
+ colors={'Contorno occhi':[.022,.011,.034,1],
+         'Ciglia':[.015,.007,.024,1],
+         'Sopracciglia':[.16,.11,.21,1]}
+ for material in a.d['materials']:
+  if material['name'] in colors:
+   material['pbrMetallicRoughness']['baseColorFactor']=colors[material['name']]
+ a.d['asset']['generator']='Neliel mesh study 02 / tools/refine_mesh.py'
  a.write(target)
 
 if __name__=='__main__':refine(*sys.argv[1:])

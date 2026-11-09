@@ -1,3 +1,15 @@
+## Revisione del modello 02 — 9 novembre 2026
+
+Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) carica
+la revisione 02: ciglia e contorno occhi scuri, sopracciglia viola desaturate,
+ciocche laterali leggermente allungate e volume superiore dei capelli ridotto.
+È un passo incrementale: volto, acconciatura e outfit non sono ancora fedeli al concept.
+
+Verifica: 15 test passati e GLB con 0 errori/0 warning. Confrontate viste frontale,
+laterale e posteriore con ispezione CPU delle texture in posa di riposo.
+Questo controllo non riproduce lo shader toon né certifica le animazioni;
+WebGL rimane disabilitato nel browser di verifica disponibile.
+
 ## Revisione del modello 01 — 9 novembre 2026
 
 Lo [studio cel shading](https://0xinsomnia.github.io/Neliel/cel-studio/) ora

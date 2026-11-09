@@ -49,3 +49,28 @@ Aprire prima il confronto nello studio, verificare anche profilo e retro,
 poi proseguire con modellazione di capelli e outfit. Conservare morph facciali,
 pesi del rig e test della camera. Usare strumenti gratuiti e salvare passi piccoli
 esclusivamente nel repository 0xInsomnia/Neliel.
+
+## Revisione 02 — controllo locale di geometria e texture
+
+Le texture originali di ciglia e contorno occhi sono maschere bianche.
+La revisione assegna un fattore colore scuro in RGB lineare, preservando
+texture, UV e alpha; le sopracciglia usano un viola desaturato.
+La deformazione delle ciocche laterali è limitata alle punte frontali,
+con allungamento massimo di 5,5 cm e riduzione laterale del 2,5%.
+Il volume superiore della frangia viene ridotto fino al 3,5%.
+Rig, indici, UV, pesi e texture incorporati sono conservati.
+
+`tools/inspect_mesh.py` produce tre viste ortografiche CPU per ambienti
+senza WebGL (Python, NumPy, Pillow). È una verifica di texture/silhouette
+in bind pose, non un renderer toon: non simula luci, rig in movimento,
+trasparenze sfumate, contorni o la camera prospettica dell'app.
+
+```sh
+OPENBLAS_NUM_THREADS=1 python tools/inspect_mesh.py assets/neliel-refined.glb /tmp/inspection.png
+```
+
+Confrontati fronte, profilo e retro prima/dopo. Una prima deformazione troppo
+ampia copriva il volto: è stata ridotta prima di salvare l'asset finale.
+La coda resta una mesh semplice senza texture dipinta: non confondere la
+sua superficie uniforme nell'ispezione unlit con il risultato toon.
+Le immagini private di riferimento restano escluse dal repository.
