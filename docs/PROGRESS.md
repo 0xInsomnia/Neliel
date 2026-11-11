@@ -1,3 +1,25 @@
+# Checkpoint — 11 November 2026, revision 10 (branch `nelielclaude`)
+
+Face state confirmed by the user: short, wide lower face with the pointed
+chin of commit `77c6afa`. A chin-rounding attempt was rejected and reverted;
+do not round or lengthen the chin without asking.
+
+`tools/refine_hair.py`, new last stage of the rebuild: removes the two
+antenna strands on the crown (152 triangles), fans the ponytail out (up to
++75% width at the tips, more depth, soft wave), blends ear texels of the face
+texture toward the skin tone, and compacts the file by dropping unreferenced
+accessors and buffer views (4.52 -> 4.02 MB). Labels: Revisione 10 / 0.5.0 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected with contours:
+face front, three-quarter, profile; body front, profile, rear (Costume studio).
+Limits: ears still render more orange than the face, so the texture blend did
+not address the cause (not yet found); ponytail strands are thin and spiky
+rather than full locks, and its bones were not moved to follow the wider
+shape; no braid; fringe unchanged; provisional outfit and expressions not
+re-inspected; real-phone performance not measured.
+
+---
+
 # Checkpoint — 11 November 2026, revision 09 (branch `nelielclaude`)
 
 User gave free choice of next step. `tools/refine_identity.py`, new last

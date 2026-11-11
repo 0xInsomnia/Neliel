@@ -1,3 +1,9 @@
+## Revisione del modello 10 — 11 novembre 2026 (branch `nelielclaude`)
+
+Tolte le due ciocche "antenna" sulla sommità, coda più ampia e mossa, file
+ripulito dai dati non più usati (4,0 MB) con `tools/refine_hair.py`.
+16 test passati, zero errori/warning glTF. Limiti in [docs/PROGRESS.md](docs/PROGRESS.md).
+
 ## Revisione del modello 09 — 11 novembre 2026 (branch `nelielclaude`)
 
 Pelle ambrata uniforme tra viso e corpo, parte inferiore del viso più corta e
