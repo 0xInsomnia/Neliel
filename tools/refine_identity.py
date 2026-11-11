@@ -1,8 +1,8 @@
-"""Revision 09: amber skin tone shared by face and body, slightly longer chin.
+"""Revision 09: amber skin tone shared by face and body, shorter, wider lower face.
 
 Input must be r08. The body texture is retinted only where it shows skin, so
 the provisional outfit keeps its colours; the face material receives a colour
-factor that brings its texture to the same tone. The lower face is lengthened
+factor that brings its texture to the same tone. The lower face is shortened and the cheeks widened
 on every facial layer and morph endpoint.
 
 Usage: python3 tools/refine_identity.py r08.glb r09.glb
@@ -20,7 +20,8 @@ SOURCE_GENERATOR = 'Neliel smooth body 08 / tools/refine_subdivide.py'
 GENERATOR = 'Neliel identity 09 / tools/refine_identity.py'
 SKIN_TONE = np.array([226, 170, 138])       # lit skin, sRGB
 LIFT = np.array([0, LEG_STRETCH * (LEG_RANGE[1] - LEG_RANGE[0]), 0])
-CHIN_DROP = .006
+CHIN_RISE = .009      # shorter lower face, as in the reference
+CHEEK_WIDTH = .045
 
 
 def to_linear(c):
@@ -83,9 +84,10 @@ def lengthen_chin(points, _flags=None):
     front = smooth(.0, .045, -z)
     lower = (1 - smooth(1.465, 1.525, y)) * smooth(1.395, 1.43, y)
     q = p.copy()
-    q[:, 1] -= CHIN_DROP * HEAD_SCALE * lower * front
-    # A narrower jaw toward the chin reads less round.
-    q[:, 0] -= x * HEAD_SCALE * .05 * (1 - smooth(1.43, 1.50, y)) * front
+    q[:, 1] += CHIN_RISE * HEAD_SCALE * lower * front
+    # Fuller cheeks: the reference face is short and wide, tapering to a small chin.
+    cheek = np.exp(-((y - 1.482) / .040) ** 2)
+    q[:, 0] += x * HEAD_SCALE * CHEEK_WIDTH * cheek * front
     return q
 
 

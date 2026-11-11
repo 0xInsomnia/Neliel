@@ -3,11 +3,15 @@
 User gave free choice of next step. `tools/refine_identity.py`, new last
 stage of the rebuild: amber skin tone (target lit sRGB 226,170,138). The body
 texture is retinted only on skin pixels and re-embedded as PNG; the face
-material gets a `baseColorFactor` computed to reach the same tone. Lower face
-lengthened by 6 mm and jaw narrowed 5% toward the chin, on all facial layers
-and morph endpoints. `src/materials.js`: the face now uses the same two tones
+material gets a `baseColorFactor` computed to reach the same tone. Lower face shortened and cheeks widened (see correction below), on all
+facial layers and morph endpoints. `src/materials.js`: the face now uses the same two tones
 as the body with a wide terminator biased toward light, so neck and face match.
 Studio labels read Revisione 09 / 0.4.9 EXP.
+
+Correction on user feedback: lengthening the chin was wrong. The reference
+face is short and wide (eye line to chin about 0.55-0.6 of the face width)
+while the model was near 0.7. The stage now raises the chin by 9 mm and
+widens the cheeks by 4.5% instead. Do not lengthen the lower face again.
 
 Checks: 16 tests pass; zero glTF errors/warnings. Inspected with contours:
 face front, three-quarter and profile; body front, profile, rear in Costume
