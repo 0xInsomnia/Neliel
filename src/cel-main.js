@@ -19,10 +19,13 @@ stage.prepend(canvas);
 
 const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(37, 1, .035, 25);
+const original = new URLSearchParams(location.search).get('model') === 'original';
+// Revision 07 is taller than the base, so it needs its own framing.
+const framing = original ? {} : { body: { target: .91, span: 1.97 }, portrait: { target: 1.59 } };
 const orbit = controlCamera(canvas, camera, mode => {
   el('home').setAttribute('aria-pressed', String(mode === 'body'));
   el('portrait').setAttribute('aria-pressed', String(mode === 'portrait'));
-});
+}, framing);
 
 scene.add(new T.HemisphereLight(0xffeef8, 0x59436e, .85));
 function light(color, intensity, position) {
@@ -114,12 +117,11 @@ el('zoom-in').onclick = () => { orbit.zoomIn(); say('Zoom avanti'); };
 el('zoom-out').onclick = () => { orbit.zoomOut(); say('Zoom indietro'); };
 
 try {
-  const original = new URLSearchParams(location.search).get('model') === 'original';
   const modelName = original ? 'Base 0.3' : 'Revisione 07';
   el('model-label').textContent = modelName;
   el('compare-model').href = original ? './' : '?model=original';
   el('compare-model').textContent = original ? 'Mostra revisione 07' : 'Confronta con la base 0.3';
-  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials);
+  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, { widen: original ? 1.08 : 1 });
   scene.add(avatar.root);
   for (const [id, action, label] of [
     ['outfit', 'changeOutfit', 'Outfit'], ['hair', 'changeHair', 'Capelli'],

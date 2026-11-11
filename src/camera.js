@@ -1,12 +1,14 @@
 import { MathUtils, Vector3 } from '../vendor/three/three.module.min.js';
 
-const views = {
+const defaults = {
   body: { target: .87, span: 1.90, azimuth: .10, elevation: .04 },
   portrait: { target: 1.51, span: .53, azimuth: .12, elevation: .05 },
 };
 const tapRadius = 10;
 
-export function controlCamera(canvas, camera, onView) {
+export function controlCamera(canvas, camera, onView, framing = {}) {
+  // Optional per-model framing, e.g. a taller revision of the avatar.
+  const views = { body: { ...defaults.body, ...framing.body }, portrait: { ...defaults.portrait, ...framing.portrait } };
   const pointers = new Map();
   const target = new Vector3();
   let view = views.body;

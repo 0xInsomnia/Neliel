@@ -13,12 +13,13 @@ const expressions = [
   { name: 'Occhiolino', weights: { wink: 1, smile: .58 } },
 ];
 
-export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null) {
+export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08 } = {}) {
   const { scene } = await new GLTFLoader().loadAsync(url.href);
   const materialController = prepareMaterials(scene);
   const root = new Group();
   root.rotation.y = Math.PI;
-  root.scale.x = 1.08;
+  // The base 0.3 asset is stretched sideways; later revisions carry their own proportions.
+  root.scale.x = widen;
   root.add(scene);
   const names = {
     chest: 'J_Bip_C_Chest', head: 'J_Bip_C_Head',

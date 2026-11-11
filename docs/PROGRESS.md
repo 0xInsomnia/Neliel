@@ -10,20 +10,28 @@ Diagnosis from the r06 bind pose: shoulder joints only 0.22 m apart against a
 Completed: `tools/refine_body.py`, added as the last stage of
 `tools/rebuild_refined.py`. One smooth space map moves every mesh layer, every
 morph endpoint and every joint (node translations and inverse bind matrices):
-shoulders +20 mm per side, narrower waist, wider hips, fuller bust, thicker
-thighs and calves, head scaled to 94.5% about the neck, legs 6.5% longer
-between ankle and hip (about +5 cm of height). Normals are transformed with
+shoulders +22 mm per side, narrower waist, wider hips, fuller bust, thicker
+thighs, calves and arms, head scaled to 93% about the neck, legs 10% longer
+between ankle and hip (about +8 cm of height). Normals are transformed with
 the map's Jacobian rather than recomputed. Topology, UVs and weights unchanged.
 
-Checks: 16 tests pass; both GLBs zero glTF errors/warnings. First revision
-inspected with the real toon shader: Chromium with software WebGL
-(SwiftShader), front, profile, rear and close-up, compared with r06.
-Not checked: real-phone performance and touch, the three poses and the wave
-with the new joint positions beyond the default pose shown at load.
+The studio no longer applies the run-time sideways stretch (`root.scale.x`
+1.08) to this revision: `loadAvatar` takes `{ widen }`, and the base 0.3 keeps
+1.08. The trunk width is baked into the mesh, so the face is 8% narrower.
+`controlCamera` takes optional framing; the studio raises both views for r07.
 
-Known limits: bust silhouette is slightly angular toward the armpits in the
-front view. Face is unchanged and still reads young (large eyes, short lower
-face). Skin is still pale, hair and outfit unchanged, tattoo still on thigh.
+Correction: the first push of this revision (`db6a0e2`) shifted the head
+sideways together with the shoulders, widening the face. The user spotted it;
+pixel measurement confirmed head width +10%. Fixed in the following commit.
+
+Checks: 16 tests pass; both GLBs zero glTF errors/warnings. Inspected with the
+real toon shader in Chromium with software WebGL (SwiftShader): front,
+profile, rear, close-up, poses Curiosa and Dinamica, smile and wave, compared
+with r06. Not checked: real-phone performance and touch.
+
+Known limits: face geometry is unchanged apart from width and still reads
+young (large eyes, short lower face). Skin is still pale, hair and outfit
+unchanged, tattoo still on thigh.
 
 Next: adult face proportions, then skin tone and tattoo placement, then hair
 volume and outfit. Private references stay out of the repository.
