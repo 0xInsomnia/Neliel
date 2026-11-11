@@ -1,4 +1,25 @@
-# Checkpoint — 11 November 2026, revision 10 (branch `nelielclaude`)
+# Checkpoint — 11 November 2026, revision 11 (branch `nelielclaude`)
+
+A wide-lock ponytail rebuild was tried and rejected by the user ("erano
+meglio prima"); it was reverted. Keep the revision 10 hair; only add missing
+locks in the same thin style, after asking which ones.
+
+`tools/refine_proportions.py`, new last stage: proportions matched to a
+commercial cel-shaded character the user supplied as a study reference
+(measurements only; no data from that file is used and it is not in the
+repository). Shoulders back in by 21 mm (arm joint 136 -> 115 mm from the
+midline, undoing the revision 07 shift), arms 8% longer between shoulder and
+wrist, lower face up to 15% narrower around the cheek line. The user asked
+for this ("copia il modello e vediamo cosa esce"); it supersedes the earlier
+note about not touching the face, but only for this change.
+`refine_body.apply_map` now holds the shared space-map machinery; revision 10
+rebuilds byte-identical after the refactor. Labels: Revisione 11 / 0.6.0 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected in Costume
+studio: body front, profile, rear; face front, three-quarter, profile.
+Not inspected: provisional outfit, expressions, poses, real phone.
+
+# Earlier checkpoint — revision 10 (branch `nelielclaude`)
 
 Face state confirmed by the user: short, wide lower face with the pointed
 chin of commit `77c6afa`. A chin-rounding attempt was rejected and reverted;

@@ -98,7 +98,8 @@ def warp(points, head_bound):
     return q
 
 
-def jacobian(points, head_bound, h=1e-4):
+def jacobian(points, head_bound, h=1e-4, mapping=None):
+    warp = mapping or globals()['warp']
     j = np.empty((len(points), 3, 3))
     for axis in range(3):
         step = np.zeros(3)
@@ -107,9 +108,9 @@ def jacobian(points, head_bound, h=1e-4):
     return j
 
 
-def map_normals(normal, points, head_bound):
+def map_normals(normal, points, head_bound, mapping=None):
     """n' = normalize(J^-T n); zero-length input normals stay untouched."""
-    inverse_t = np.linalg.inv(jacobian(points, head_bound)).transpose(0, 2, 1)
+    inverse_t = np.linalg.inv(jacobian(points, head_bound, mapping=mapping)).transpose(0, 2, 1)
     out = np.einsum('nij,nj->ni', inverse_t, normal.astype(np.float64))
     length = np.linalg.norm(out, axis=1)
     ok = length > 1e-9
@@ -137,6 +138,14 @@ def build(source, target):
     doc = asset.d
     if doc['asset'].get('generator') != SOURCE_GENERATOR:
         raise ValueError('Expected revision 06; do not apply cumulatively')
+    apply_map(asset, warp)
+    doc['asset']['generator'] = GENERATOR
+    asset.write(target)
+
+
+def apply_map(asset, warp):
+    """Move every mesh layer, morph endpoint and joint through one space map."""
+    doc = asset.d
     nodes = doc['nodes']
     for node in nodes:
         if np.abs(np.array(node.get('rotation', [0, 0, 0, 1])) - [0, 0, 0, 1]).max() > 1e-6 \
@@ -173,13 +182,13 @@ def build(source, target):
             flags = np.full(len(base), bound)
             shaped = warp(base, flags)
             base_normal = asset.array(attrs['NORMAL']).copy()
-            normal = map_normals(base_normal, base, flags)
+            normal = map_normals(base_normal, base, flags, warp)
             for morph in primitive.get('targets', []):
                 posed = base + asset.array(morph['POSITION'])
                 asset.set(morph['POSITION'], (warp(posed, flags) - shaped).astype(np.float32))
                 if 'NORMAL' in morph:
                     posed_normal = base_normal + asset.array(morph['NORMAL'])
-                    asset.set(morph['NORMAL'], (map_normals(posed_normal, posed, flags) - normal).astype(np.float32))
+                    asset.set(morph['NORMAL'], (map_normals(posed_normal, posed, flags, warp) - normal).astype(np.float32))
             asset.set(attrs['POSITION'], (shaped - new_origin).astype(np.float32))
             asset.set(attrs['NORMAL'], normal.astype(np.float32))
 
@@ -194,9 +203,6 @@ def build(source, target):
         # glTF stores column-major matrices: the translation is the fourth row here.
         matrices[:, 3, :3] = -new_world[skin['joints']]
         asset.set(skin['inverseBindMatrices'], matrices.reshape(-1, 16).astype(np.float32))
-
-    doc['asset']['generator'] = GENERATOR
-    asset.write(target)
 
 
 if __name__ == '__main__':
