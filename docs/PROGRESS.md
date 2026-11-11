@@ -1,24 +1,4 @@
-# Checkpoint — 11 November 2026, revision 11 (branch `nelielclaude`)
-
-`tools/refine_ponytail.py`, new last stage of the rebuild: the ponytail is
-rebuilt from 16 broad, flattened locks (7 outer, 6 inner, 3 short ones over
-the arch) generated from curves, replacing the 31 thin tubes (16,740 -> 7,360
-triangles). Shading is painted into vertex colours (light ridge, darker edges
-and underside). Node `Coda`, material and the four `Ponytail_*` bones are
-unchanged. The construction follows what was observed in a commercial
-cel-shaded reference the user supplied for study (hair as one sculpted mass
-of wide locks); no geometry, texture or rig was taken from that file, and it
-is not in the repository. Labels: Revisione 11 / 0.6.0 EXP. File 3.78 MB.
-
-Checks: 16 tests pass; zero glTF errors/warnings. Inspected dressed, without
-contours: profile, three-quarter rear, rear. Not inspected: contours on the
-new tail, bone sway up close, hair toggle, real phone.
-
-Still open: fringe and side locks are the old thin construction and no
-longer match the tail; no side braid; lock tips are straight; ears more
-orange than the face; outfit, shoulder tattoo, joint detail not started.
-
-# Earlier checkpoint — revision 10 (branch `nelielclaude`)
+# Checkpoint — 11 November 2026, revision 10 (branch `nelielclaude`)
 
 Face state confirmed by the user: short, wide lower face with the pointed
 chin of commit `77c6afa`. A chin-rounding attempt was rejected and reverted;
