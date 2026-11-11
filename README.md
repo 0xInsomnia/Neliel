@@ -1,3 +1,10 @@
+## Revisione del modello 08 — 11 novembre 2026 (branch `nelielclaude`)
+
+La pelle del corpo è stata infittita con un livello di suddivisione Loop
+(da 7.732 a 30.928 triangoli) tramite `tools/refine_subdivide.py`: profilo più
+morbido e ombre cel più pulite. Il GLB passa da 2,9 a 4,1 MB.
+16 test passati, zero errori/warning glTF. Dettagli in [docs/PROGRESS.md](docs/PROGRESS.md).
+
 ## Revisione del modello 07 — 11 novembre 2026 (branch `nelielclaude`)
 
 Proporzioni del corpo più adulte: spalle più larghe, vita più stretta, fianchi,

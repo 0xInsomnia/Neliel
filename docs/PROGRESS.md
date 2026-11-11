@@ -1,3 +1,22 @@
+# Checkpoint — 11 November 2026, revision 08 (branch `nelielclaude`)
+
+`tools/refine_subdivide.py`, new last stage of `tools/rebuild_refined.py`:
+one level of Loop subdivision on the skin primitive only (7,732 -> 30,928
+triangles, 16,986 vertices). Positions are smoothed on a topology welded
+across UV seams; borders stay fixed; UVs interpolated, skin weights blended to
+four influences, normals recomputed on the welded surface. The old skin
+arrays remain in the file as unused data. GLB is now 4.06 MB (was 2.93 MB).
+Studio labels read Revisione 08 / 0.4.8 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected with contours on,
+front, profile and rear, in Costume studio and with the provisional outfit.
+Result: smoother silhouette and cleaner shadow terminator on torso and limbs.
+Limits: the swimsuit's lower edge became ragged; two small light dots appear
+on the bust of the provisional outfit; no extra sculpted detail yet (elbows,
+knees, hands); performance on a real phone not measured with the larger mesh.
+
+---
+
 # Checkpoint — 11 November 2026, revision 07 (branch `nelielclaude`)
 
 Work on this revision lives on branch `nelielclaude`, started from `bdd92c3`.
