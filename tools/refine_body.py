@@ -62,16 +62,16 @@ def warp(points, head_bound):
     for side in (-1, 1):
         centre = np.array([side * .062, 1.262, -.085])
         d = p - centre
-        g = np.exp(-(d[:, 0] / .060) ** 2 - (d[:, 1] / .058) ** 2 - (d[:, 2] / .070) ** 2)
+        g = np.exp(-(d[:, 0] / .064) ** 2 - (d[:, 1] / .062) ** 2 - (d[:, 2] / .074) ** 2)
         g = g * (1 - w)
         # Projection rather than width: the profile needs it, the front does not.
-        q[:, 0] += d[:, 0] * .04 * g
-        q[:, 1] += d[:, 1] * .14 * g - .006 * g
-        q[:, 2] += d[:, 2] * .26 * g - .034 * g
+        q[:, 0] += d[:, 0] * .15 * g + side * .004 * g
+        q[:, 1] += d[:, 1] * .24 * g - .010 * g
+        q[:, 2] += d[:, 2] * .36 * g - .046 * g
 
     # Pelvis: wider hips and fuller rear, including the skirt that covers them.
     hip = gauss(y, .95, .11) * (1 - smooth(1.02, 1.10, y))
-    q[:, 0] += x * .27 * hip * (1 - w)
+    q[:, 0] += x * .13 * hip * (1 - w)
     q[:, 2] += np.maximum(z, 0) * .24 * hip * (1 - w)
 
     # Thighs and calves: radial growth around each leg axis, fading out with
@@ -81,7 +81,7 @@ def warp(points, head_bound):
         cx = side * (.055 + .022 * t)
         dx, dz = x - cx, z - .004
         r = np.hypot(dx, dz)
-        amount = (.33 * gauss(y, .84, .20) + .10 * gauss(y, .40, .13)) * smooth(.14, .22, y)
+        amount = (.24 * gauss(y, .84, .20) + .10 * gauss(y, .40, .13)) * smooth(.14, .22, y)
         amount = amount * (1 - smooth(.060, .135, r)) * (sign == side) * (1 - w)
         # Less growth toward the midline keeps the inner thighs apart.
         inner = np.where(side * dx < 0, .55 * smooth(0, .03, side * x), 1.0)

@@ -5,6 +5,7 @@ export function materialProfile(name) {
   if (/Iride|Sclera|Riflesso|Contorno occhi|Ciglia|Sopracciglia|Bocca|Occhi extra/.test(name)) return 'eyes';
   if (/Viso/.test(name)) return 'face';
   if (/Capelli|Ciocche|Argento/.test(name)) return 'hair';
+  if (/Pelle/.test(name)) return 'skin';
   if (/Fermaglio|Dettagli/.test(name)) return 'metal';
   return 'fabric';
 }
@@ -44,6 +45,15 @@ export function createAnimeMaterial(source, ramps) {
       ${profile === 'hair' ? `
       float band = pow(max(0.0, dot(normalize(normal), normalize(vec3(-0.25, 0.65, 1.0)))), 24.0);
       outgoingLight += diffuseColor.rgb * vec3(0.23, 0.19, 0.29) * band;` : ''}
+      ${profile === 'skin' ? `
+      // Two-tone cel shading with a crisp terminator and a warm tinted shadow,
+      // so the body's volumes read without painted detail.
+      #if NUM_DIR_LIGHTS > 0
+        float keyLight = dot(normalize(normal), directionalLights[0].direction);
+        float lit = smoothstep(0.10, 0.17, keyLight);
+        outgoingLight = diffuseColor.rgb * mix(vec3(0.74, 0.55, 0.62), vec3(1.03, 0.99, 0.97), lit)
+          + totalEmissiveRadiance + vec3(0.19, 0.13, 0.29) * edge * 0.20;
+      #endif` : ''}
       ${profile === 'metal' ? 'outgoingLight += vec3(0.10, 0.07, 0.16) * pow(facing, 32.0);' : ''}
     `;
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', effect + '\n#include <opaque_fragment>');
@@ -68,7 +78,7 @@ export function applyAnimeMaterials(scene) {
     });
     mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
     // Omit facial shells: expanded eyelashes/eyes create dark halos in close-ups.
-    if (originals.length !== 1 || !['hair', 'fabric'].includes(materialProfile(originals[0].name)) || originals[0].transparent) continue;
+    if (originals.length !== 1 || !['hair', 'fabric', 'skin'].includes(materialProfile(originals[0].name)) || originals[0].transparent) continue;
     const ink = new T.MeshBasicMaterial({ color: 0x30243f, side: T.BackSide });
     ink.customProgramCacheKey = () => 'neliel-outline-v1';
     ink.onBeforeCompile = shader => {

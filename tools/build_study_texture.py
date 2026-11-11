@@ -48,7 +48,7 @@ def texel_positions(asset, primitive, size):
         a = ((p[1, 1] - p[2, 1]) * (x - p[2, 0]) + (p[2, 0] - p[1, 0]) * (y - p[2, 1])) / det
         b = ((p[2, 1] - p[0, 1]) * (x - p[2, 0]) + (p[0, 0] - p[2, 0]) * (y - p[2, 1])) / det
         weights = np.stack([a, b, 1 - a - b], -1)
-        inside = weights.min(-1) >= -.6 / max(np.sqrt(abs(det)), 1)   # small bleed over seams
+        inside = weights.min(-1) >= -1e-6
         region = np.s_[low[1]:high[1] + 1, low[0]:high[0] + 1]
         fresh = inside & ~covered[region]
         position[region][fresh] = (weights @ points[triangle])[fresh]
@@ -106,9 +106,9 @@ def swimsuit(position, covered, torso, crotch, bust_y):
     # Top: two cups joined in front, a band around the back and neck straps.
     under = bust_y - .058
     cup = ((ax - .075) / .066) ** 2 + ((y - bust_y) / .060) ** 2 < 1
-    band = (np.abs(y - (under + .012)) < .013)
+    band = (np.abs(y - (under + .012)) < .016)
     strap = (np.abs(ax - (.072 - .35 * (y - bust_y))) < .008) & (y > bust_y) & (y < bust_y + .12) & (z < .0)
-    top = trunk & (ax < .15) & ((cup & (z < -.02)) | band | strap)
+    top = trunk & (ax < .17) & ((cup & (z < .01)) | band | strap)
     return briefs | top
 
 

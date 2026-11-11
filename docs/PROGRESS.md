@@ -48,6 +48,16 @@ re-inspected after this pass. Style target restated by the user: Genshin-like
 3D cel shading, for both the look and ease of modelling (rendering reference
 only; no proprietary assets).
 
+Third body pass on user feedback (hips too wide, bust could be larger, body
+hard to read): pelvis widening reduced from 27% to 13%, thigh growth from 33%
+to 24%, bust enlarged and projected further. New `skin` material profile in
+`src/materials.js`: two-tone cel shading from the key light with a crisp
+terminator and warm tinted shadow, and the body now takes part in the optional
+contours. Inspected in Costume studio with contours on: front, profile, rear.
+Limits: the shadow terminator is jagged on shoulders and back because the body
+mesh is coarse (about 4,600 skin vertices); the swimsuit top has an irregular
+edge at the side; dressed outfit not re-inspected with the new skin shading.
+
 Known limits: face geometry is unchanged apart from width and still reads
 young (large eyes, short lower face). Skin is still pale, hair and outfit
 unchanged, tattoo still on thigh.
