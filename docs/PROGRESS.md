@@ -1,3 +1,25 @@
+# Checkpoint — 11 November 2026, revision 09 (branch `nelielclaude`)
+
+User gave free choice of next step. `tools/refine_identity.py`, new last
+stage of the rebuild: amber skin tone (target lit sRGB 226,170,138). The body
+texture is retinted only on skin pixels and re-embedded as PNG; the face
+material gets a `baseColorFactor` computed to reach the same tone. Lower face
+lengthened by 6 mm and jaw narrowed 5% toward the chin, on all facial layers
+and morph endpoints. `src/materials.js`: the face now uses the same two tones
+as the body with a wide terminator biased toward light, so neck and face match.
+Studio labels read Revisione 09 / 0.4.9 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected with contours:
+face front, three-quarter and profile; body front, profile, rear in Costume
+studio. The provisional outfit was captured but not reviewed after this pass.
+Limits: ears are more orange than the face; face still slightly pinker than
+the body; hard shadow under the jaw in three-quarter view; expressions not
+re-inspected after the chin change; GLB is 4.5 MB because superseded skin
+arrays and the old body texture are still stored (needs compaction);
+ahoge, hair, outfit and tattoo placement unchanged.
+
+---
+
 # Checkpoint — 11 November 2026, revision 08 (branch `nelielclaude`)
 
 `tools/refine_subdivide.py`, new last stage of `tools/rebuild_refined.py`:

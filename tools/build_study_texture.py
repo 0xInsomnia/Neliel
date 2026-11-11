@@ -81,7 +81,7 @@ def torso_island(asset, primitive, size):
 def remove_garments(rgb):
     """Replace painted fabric with skin grown inward from the surrounding skin."""
     r, g, b = [rgb[..., i].astype(int) for i in range(3)]
-    skin = (r > 175) & (r - b > 18) & (r >= g)
+    skin = (r > 160) & (r - b > 18) & (r >= g)
     # A flat tone avoids dragging nail and knuckle detail from neighbouring
     # UV islands into the limbs; the toon shader supplies the shading.
     tone = np.median(rgb[skin], axis=0)

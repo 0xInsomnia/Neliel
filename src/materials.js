@@ -54,6 +54,15 @@ export function createAnimeMaterial(source, ramps) {
         outgoingLight = diffuseColor.rgb * mix(vec3(0.74, 0.55, 0.62), vec3(1.03, 0.99, 0.97), lit)
           + totalEmissiveRadiance + vec3(0.19, 0.13, 0.29) * edge * 0.20;
       #endif` : ''}
+      ${profile === 'face' ? `
+      // Same two tones as the body so neck and ears match, but with a wide,
+      // biased terminator that keeps the front of the face in light.
+      #if NUM_DIR_LIGHTS > 0
+        float faceLight = dot(normalize(normal), directionalLights[0].direction);
+        float faceLit = smoothstep(-0.35, 0.05, faceLight);
+        outgoingLight = diffuseColor.rgb * mix(vec3(0.74, 0.55, 0.62), vec3(1.03, 0.99, 0.97), faceLit)
+          + totalEmissiveRadiance + vec3(0.19, 0.13, 0.29) * edge * 0.08;
+      #endif` : ''}
       ${profile === 'metal' ? 'outgoingLight += vec3(0.10, 0.07, 0.16) * pow(facing, 32.0);' : ''}
     `;
     shader.fragmentShader = shader.fragmentShader.replace('#include <opaque_fragment>', effect + '\n#include <opaque_fragment>');

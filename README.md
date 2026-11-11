@@ -1,3 +1,10 @@
+## Revisione del modello 09 — 11 novembre 2026 (branch `nelielclaude`)
+
+Pelle ambrata uniforme tra viso e corpo, mento leggermente più lungo e
+mandibola più stretta (`tools/refine_identity.py`). Il viso usa gli stessi due
+toni cel del corpo. 16 test passati, zero errori/warning glTF.
+Limiti e dettagli in [docs/PROGRESS.md](docs/PROGRESS.md).
+
 ## Revisione del modello 08 — 11 novembre 2026 (branch `nelielclaude`)
 
 La pelle del corpo è stata infittita con un livello di suddivisione Loop

@@ -1,4 +1,4 @@
-"""Rebuild revision 08 from the tracked base; replace the output only after validation.
+"""Rebuild revision 09 from the tracked base; replace the output only after validation.
 
 Requires Python/NumPy and `npm ci --ignore-scripts` (Node.js 22+).
 Run from any directory: python3 tools/rebuild_refined.py
@@ -15,14 +15,15 @@ from refine_adult_face import build as adult
 from refine_head_balance import build as balance
 from refine_body import build as body
 from refine_subdivide import build as subdivide
+from refine_identity import build as identity
 
 
 def main():
     root = Path(__file__).resolve().parent.parent
     # Same filesystem as the destination so os.replace is atomic.
     with tempfile.TemporaryDirectory(prefix='.rebuild-', dir=root / 'assets') as tmp:
-        stages = [root / 'assets/neliel.glb'] + [Path(tmp) / f'r{i:02}.glb' for i in range(2, 9)]
-        for transform, source, target in zip([refine, portrait, crown, adult, balance, body, subdivide], stages, stages[1:]):
+        stages = [root / 'assets/neliel.glb'] + [Path(tmp) / f'r{i:02}.glb' for i in range(2, 10)]
+        for transform, source, target in zip([refine, portrait, crown, adult, balance, body, subdivide, identity], stages, stages[1:]):
             transform(source, target)
         subprocess.run(['node', '--input-type=module', '-e', """
 import fs from 'node:fs';
@@ -34,7 +35,7 @@ if (report.issues.numErrors || report.issues.numWarnings) {
   console.error(report.issues);
   process.exit(1);
 }
-console.log(`Validated revision 08: ${bytes.length} bytes`);
+console.log(`Validated revision 09: ${bytes.length} bytes`);
 """, str(stages[-1])], cwd=root, check=True)
         os.replace(stages[-1], root / 'assets/neliel-refined.glb')
     print('Rebuilt assets/neliel-refined.glb. Run npm test before committing.')
