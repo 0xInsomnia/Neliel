@@ -1,4 +1,4 @@
-import { Color, Group, MathUtils } from '../vendor/three/three.module.min.js';
+import { Color, Group, MathUtils, SRGBColorSpace, TextureLoader } from '../vendor/three/three.module.min.js';
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 
 const poses = [
@@ -13,7 +13,7 @@ const expressions = [
   { name: 'Occhiolino', weights: { wink: 1, smile: .58 } },
 ];
 
-export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08 } = {}) {
+export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08, studyMap = null } = {}) {
   const { scene } = await new GLTFLoader().loadAsync(url.href);
   const materialController = prepareMaterials(scene);
   const root = new Group();
@@ -43,7 +43,11 @@ export async function loadAvatar(url, reducedMotion, prepareMaterials = () => nu
   const hairBones = Array.from({ length: 4 }, (_, index) => scene.getObjectByName(`Ponytail_${index}`));
   const faces = [];
   const panels = new Set();
+  const garments = [];
+  let skin;
   scene.traverse(object => {
+    if (['Pannelli', 'Stivali'].includes(object.material?.name)) garments.push(object);
+    if (object.material?.name === 'Pelle e tessuto') skin = object.material;
     if (object.isSkinnedMesh) object.frustumCulled = false;
     if (object.morphTargetDictionary?.smile !== undefined) faces.push(object);
     if (['Pannelli', 'Stivali', 'Dettagli'].includes(object.material?.name)) panels.add(object.material);
@@ -54,7 +58,20 @@ export async function loadAvatar(url, reducedMotion, prepareMaterials = () => nu
 
   let pose = 0;
   let expression = 0;
-  let alternate = false;
+  let look = 0;
+  // Proportion study: the provisional outfit is replaced by a plain swimsuit.
+  const paintedOutfit = skin?.map;
+  let studyTexture;
+  const setStudy = active => {
+    if (active && !studyTexture) {
+      studyTexture = new TextureLoader().load(studyMap.href);
+      studyTexture.flipY = false;
+      studyTexture.colorSpace = SRGBColorSpace;
+    }
+    for (const garment of garments) garment.visible = !active;
+    skin.map = active ? studyTexture : paintedOutfit;
+    skin.needsUpdate = true;
+  };
   let waveTime = 0;
   let time = 0;
   const rest = { ...poses[0] };
@@ -72,14 +89,16 @@ export async function loadAvatar(url, reducedMotion, prepareMaterials = () => nu
       return expressions[expression].name;
     },
     changeOutfit() {
-      alternate = !alternate;
+      look = (look + 1) % (studyMap && skin ? 3 : 2);
+      const alternate = look === 1;
+      if (studyMap && skin) setStudy(look === 2);
       palette.set(alternate ? 0xcfc3ff : 0xffffff);
       for (const material of panels) {
         material.color.copy(palette);
         material.emissive.set(alternate ? 0x382068 : 0x090414);
         material.emissiveIntensity = alternate ? .70 : .30;
       }
-      return alternate ? 'Ametista' : 'Notte';
+      return ['Notte', 'Ametista', 'Costume studio'][look];
     },
     changeHair() {
       tail.visible = !tail.visible;

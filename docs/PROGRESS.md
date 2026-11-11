@@ -11,7 +11,7 @@ Completed: `tools/refine_body.py`, added as the last stage of
 `tools/rebuild_refined.py`. One smooth space map moves every mesh layer, every
 morph endpoint and every joint (node translations and inverse bind matrices):
 shoulders +22 mm per side, narrower waist, wider hips, fuller bust, thicker
-thighs, calves and arms, head scaled to 93% about the neck, legs 10% longer
+thighs and calves, head scaled to 93% about the neck, legs 10% longer
 between ankle and hip (about +8 cm of height). Normals are transformed with
 the map's Jacobian rather than recomputed. Topology, UVs and weights unchanged.
 
@@ -28,6 +28,17 @@ Checks: 16 tests pass; both GLBs zero glTF errors/warnings. Inspected with the
 real toon shader in Chromium with software WebGL (SwiftShader): front,
 profile, rear, close-up, poses Curiosa and Dinamica, smile and wave, compared
 with r06. Not checked: real-phone performance and touch.
+
+Proportion study mode (requested by the user, who could not judge the body
+under the provisional outfit): the studio's Outfit button now cycles Notte →
+Ametista → Costume studio. The third state hides the skirt, sleeve and boot
+geometry and swaps the body texture for `assets/body-study.png`, built by
+`tools/build_study_texture.py`: painted garments replaced by a flat skin tone
+and a plain two-piece swimsuit placed from each texel's rest position and the
+rig joints. Regenerate it after any body revision. Arm thickening reduced from
+8% to 3% after seeing the bare arms. Inspected front, profile, three-quarter
+rear and rear at 1.65x pixel ratio. Small light specks remain on the side of
+the swimsuit top; the thigh tattoo is absent in this mode.
 
 Known limits: face geometry is unchanged apart from width and still reads
 young (large eyes, short lower face). Skin is still pale, hair and outfit

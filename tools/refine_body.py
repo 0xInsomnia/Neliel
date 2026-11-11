@@ -51,8 +51,8 @@ def warp(points, head_bound):
 
     # Arms keep their thickness without the former run-time sideways stretch.
     arm = smooth(.12, .17, ax) * smooth(1.10, 1.18, y) * (1 - w)
-    q[:, 1] += (y - 1.342) * .08 * arm
-    q[:, 2] += (z - .002) * .08 * arm
+    q[:, 1] += (y - 1.342) * .03 * arm
+    q[:, 2] += (z - .002) * .03 * arm
 
     # Ribcage slightly wider under the shoulders, narrower waist.
     q[:, 0] += x * torso * (.045 * gauss(y, 1.27, .055) - .075 * gauss(y, 1.11, .060))

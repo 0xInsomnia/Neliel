@@ -121,7 +121,10 @@ try {
   el('model-label').textContent = modelName;
   el('compare-model').href = original ? './' : '?model=original';
   el('compare-model').textContent = original ? 'Mostra revisione 07' : 'Confronta con la base 0.3';
-  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, { widen: original ? 1.08 : 1 });
+  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, {
+    widen: original ? 1.08 : 1,
+    studyMap: original ? null : new URL('../assets/body-study.png', import.meta.url),
+  });
   scene.add(avatar.root);
   for (const [id, action, label] of [
     ['outfit', 'changeOutfit', 'Outfit'], ['hair', 'changeHair', 'Capelli'],
