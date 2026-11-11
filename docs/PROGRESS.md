@@ -1,3 +1,35 @@
+# Checkpoint — 11 November 2026, revision 07 (branch `nelielclaude`)
+
+Work on this revision lives on branch `nelielclaude`, started from `bdd92c3`.
+`main` is untouched. Goal agreed with the user: remove the childlike read of
+the figure, starting from the body.
+
+Diagnosis from the r06 bind pose: shoulder joints only 0.22 m apart against a
+0.23 m wide head, thin thighs and no waist/hip contrast.
+
+Completed: `tools/refine_body.py`, added as the last stage of
+`tools/rebuild_refined.py`. One smooth space map moves every mesh layer, every
+morph endpoint and every joint (node translations and inverse bind matrices):
+shoulders +20 mm per side, narrower waist, wider hips, fuller bust, thicker
+thighs and calves, head scaled to 94.5% about the neck, legs 6.5% longer
+between ankle and hip (about +5 cm of height). Normals are transformed with
+the map's Jacobian rather than recomputed. Topology, UVs and weights unchanged.
+
+Checks: 16 tests pass; both GLBs zero glTF errors/warnings. First revision
+inspected with the real toon shader: Chromium with software WebGL
+(SwiftShader), front, profile, rear and close-up, compared with r06.
+Not checked: real-phone performance and touch, the three poses and the wave
+with the new joint positions beyond the default pose shown at load.
+
+Known limits: bust silhouette is slightly angular toward the armpits in the
+front view. Face is unchanged and still reads young (large eyes, short lower
+face). Skin is still pale, hair and outfit unchanged, tattoo still on thigh.
+
+Next: adult face proportions, then skin tone and tattoo placement, then hair
+volume and outfit. Private references stay out of the repository.
+
+---
+
 # Integrity recovery — 9 November 2026
 
 The previously published revision 06 in `50e3ff2` was truncated to 16,384

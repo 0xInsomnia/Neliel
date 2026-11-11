@@ -1,3 +1,13 @@
+## Revisione del modello 07 — 11 novembre 2026 (branch `nelielclaude`)
+
+Proporzioni del corpo più adulte: spalle più larghe, vita più stretta, fianchi,
+busto e cosce più pieni, testa al 94,5% e gambe più lunghe del 6,5%.
+`tools/refine_body.py` sposta insieme mesh, morph e ossa del rig.
+
+Verifica: 16 test passati, zero errori/warning glTF, viste fronte, profilo,
+retro e primo piano con lo shader toon in WebGL software. Volto, pelle,
+capelli e outfit sono invariati. Dettagli: [docs/PROGRESS.md](docs/PROGRESS.md).
+
 ## Ripristino integrità revisione 06 — 9 novembre 2026
 
 Il commit `50e3ff2` aveva pubblicato un GLB troncato a 16.384 byte:
