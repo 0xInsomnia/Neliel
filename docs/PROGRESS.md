@@ -58,6 +58,10 @@ Limits: the shadow terminator is jagged on shoulders and back because the body
 mesh is coarse (about 4,600 skin vertices); the swimsuit top has an irregular
 edge at the side; dressed outfit not re-inspected with the new skin shading.
 
+Fourth body pass on user feedback: pelvis widening 13% -> 7%, thigh growth
+24% -> 19%, bust larger again. Inspected in Costume studio with contours:
+front, profile, rear.
+
 Known limits: face geometry is unchanged apart from width and still reads
 young (large eyes, short lower face). Skin is still pale, hair and outfit
 unchanged, tattoo still on thigh.
