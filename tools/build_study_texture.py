@@ -112,6 +112,54 @@ def swimsuit(position, covered, torso, crotch, bust_y):
     return briefs | top
 
 
+def skin_details(rgb, position, covered, joint):
+    """Painted finish: navel, abdomen lines, collarbones, knees, warm joints."""
+    x, y, z = np.moveaxis(position, -1, 0)
+    ax = np.abs(x)
+    out = rgb.astype(np.float64)
+    shade = np.zeros(x.shape)
+    warm = np.zeros(x.shape)
+
+    def g(v, centre, sigma):
+        return np.exp(-((v - centre) / sigma) ** 2)
+
+    navel = joint['J_Bip_C_Spine'][1] + .022
+    under_bust = joint['J_Sec_L_Bust2'][1] - .075
+    belly = 1 - smooth(-.075, -.045, z)                       # front of the abdomen
+    span = smooth(navel + .015, navel + .04, y) * (1 - smooth(under_bust - .03, under_bust, y))
+    shade += .62 * g(x, 0, .0055) * g(y, navel, .010) * belly
+    shade += .20 * g(x, 0, .0045) * span * belly
+    side_line = .046 + 1.4 * (y - (navel + .06)) ** 2
+    shade += .13 * g(ax, side_line, .0065) * smooth(navel - .03, navel + .01, y) \
+        * (1 - smooth(under_bust - .04, under_bust - .01, y)) * belly
+    # Hip crease toward the briefs.
+    crease = joint['J_Bip_L_UpperLeg'][1] + .085 - .55 * (ax - .06)
+    shade += .12 * g(y, crease, .006) * smooth(.045, .07, ax) * (1 - smooth(.115, .135, ax)) * belly
+
+    collar = joint['J_Bip_C_Neck'][1] - .052 + .16 * np.maximum(ax - .02, 0)
+    chest = (1 - smooth(-.045, -.02, z)) * smooth(.012, .03, ax) * (1 - smooth(.115, .145, ax))
+    shade += .26 * g(y, collar - .005, .0045) * chest
+    shade -= .10 * g(y, collar + .004, .0045) * chest
+    shade += .22 * g(x, 0, .010) * g(y, joint['J_Bip_C_Neck'][1] - .060, .008) * (1 - smooth(-.045, -.02, z))
+
+    for side in (-1, 1):
+        knee = joint['J_Bip_L_LowerLeg']
+        cx = side * abs(knee[0])
+        front = 1 - smooth(knee[2] - .03, knee[2] - .005, z)
+        shade += .16 * g(x, cx, .026) * g(y, knee[1] - .022, .007) * front
+        warm += .30 * g(x, cx, .030) * g(y, knee[1] + .004, .022) * front
+        shoulder = joint['J_Bip_L_UpperArm']
+        warm += .22 * g(x, side * (abs(shoulder[0]) + .035), .035) * g(y, shoulder[1] + .02, .03)
+
+    shade = np.clip(shade, -.25, .8)[..., None] * covered[..., None]
+    dark = out * [.72, .56, .55]
+    light = np.minimum(out * 1.10, 255)
+    out = np.where(shade >= 0, out + (dark - out) * shade, out + (light - out) * -shade / .25 * .25 * 4)
+    blush = out * [1.02, .86, .84]
+    out += (blush - out) * np.clip(warm, 0, 1)[..., None] * covered[..., None]
+    return np.clip(out, 0, 255).round().astype(np.uint8)
+
+
 def build(source, target):
     asset = Asset(source)
     primitive = body_primitive(asset)
@@ -135,6 +183,7 @@ def build(source, target):
     joint = {node.get('name'): world[i] for i, node in enumerate(doc['nodes'])}
     crotch = joint['J_Bip_L_UpperLeg'][1] - .105
     bust_y = joint['J_Sec_L_Bust2'][1]
+    rgb = skin_details(rgb, position, covered, joint)
     suit = swimsuit(position, covered, torso, crotch, bust_y)
     # Carry the fabric over UV seams so filtering cannot show a skin line there,
     # and keep the trim off those seams.

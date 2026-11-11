@@ -18,7 +18,7 @@ from refine_body import HEAD_PIVOT, HEAD_SCALE, LEG_RANGE, LEG_STRETCH
 
 SOURCE_GENERATOR = 'Neliel smooth body 08 / tools/refine_subdivide.py'
 GENERATOR = 'Neliel identity 09 / tools/refine_identity.py'
-SKIN_TONE = np.array([226, 170, 138])       # lit skin, sRGB
+SKIN_TONE = np.array([212, 150, 116])       # lit skin, sRGB
 LIFT = np.array([0, LEG_STRETCH * (LEG_RANGE[1] - LEG_RANGE[0]), 0])
 CHIN_RISE = .009      # shorter lower face, as in the reference
 CHEEK_WIDTH = .045

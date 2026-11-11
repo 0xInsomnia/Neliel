@@ -1,4 +1,29 @@
-# Checkpoint — 11 November 2026, revision 11 (branch `nelielclaude`)
+# Checkpoint — 12 November 2026, revision 12 (branch `nelielclaude`)
+
+The user supplied a character sheet (standing front figure, expressions,
+outfit variants) and asked for the proportions plus first finishing touches.
+
+- `tools/refine_figure.py`, new last stage: hips +11% wide, fuller rear,
+  thighs +15% and calves +4% around the leg axes; eye opening 18% lower with
+  a slight upward tilt of the outer corner (lashes, brows and blink follow).
+  This reverses part of the earlier hip narrowing, on the user's request.
+- `refine_identity.py`: skin tone darkened from (226,170,138) to (212,150,116).
+- `build_study_texture.py`: `skin_details` paints navel, abdomen lines, hip
+  crease, collarbones, sternum notch, knee shadows and warm knees/shoulders,
+  placed from joints. These exist only in Costume studio; the provisional
+  outfit texture still covers the torso.
+Labels: Revisione 12 / 0.7.0 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected in Costume
+studio: body front, profile, rear; face front, three-quarter, profile.
+Not inspected: provisional outfit, expressions, poses, real phone.
+
+Still open, in the order agreed with the user: hair as in the reference
+(side braid, scrunchie, longer tail, long face-framing locks, fringe strands
+across the eyes — thin strands, not wide locks); mouth and nose; shoulder
+tattoo; real outfit; poses and expressions from the sheet.
+
+# Earlier checkpoint — revision 11 (branch `nelielclaude`)
 
 A wide-lock ponytail rebuild was tried and rejected by the user ("erano
 meglio prima"); it was reverted. Keep the revision 10 hair; only add missing
