@@ -40,6 +40,14 @@ rig joints. Regenerate it after any body revision. Arm thickening reduced from
 rear and rear at 1.65x pixel ratio. Small light specks remain on the side of
 the swimsuit top; the thigh tattoo is absent in this mode.
 
+Second body pass, after the user confirmed the figure lacked curves: hips
++27% width at the pelvis, fuller rear, thighs +33% radius tapering to the
+knee, waist slightly narrower, bust projected forward rather than widened.
+Inspected in Costume studio: front, profile, rear. The dressed outfit was not
+re-inspected after this pass. Style target restated by the user: Genshin-like
+3D cel shading, for both the look and ease of modelling (rendering reference
+only; no proprietary assets).
+
 Known limits: face geometry is unchanged apart from width and still reads
 young (large eyes, short lower face). Skin is still pale, hair and outfit
 unchanged, tattoo still on thigh.
