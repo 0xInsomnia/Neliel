@@ -12,8 +12,6 @@ Correction on user feedback: lengthening the chin was wrong. The reference
 face is short and wide (eye line to chin about 0.55-0.6 of the face width)
 while the model was near 0.7. The stage now raises the chin by 9 mm and
 widens the cheeks by 4.5% instead. Do not lengthen the lower face again.
-The user then found the chin too pointed: the jaw is widened 16% just above
-the tip to round it. Inspected front and three-quarter.
 
 Checks: 16 tests pass; zero glTF errors/warnings. Inspected with contours:
 face front, three-quarter and profile; body front, profile, rear in Costume

@@ -88,8 +88,6 @@ def lengthen_chin(points, _flags=None):
     # Fuller cheeks: the reference face is short and wide, tapering to a small chin.
     cheek = np.exp(-((y - 1.482) / .040) ** 2)
     q[:, 0] += x * HEAD_SCALE * CHEEK_WIDTH * cheek * front
-    # Round the chin: widen the jaw just above the tip so it is not a point.
-    q[:, 0] += x * HEAD_SCALE * .16 * np.exp(-((y - 1.443) / .017) ** 2) * front
     return q
 
 
