@@ -9,9 +9,11 @@ found the first result "un po' troppo tondo" and asked for more detail.
   the private sheet, in units of H (eye line to chin). Only the numbers are
   in the repository; the crops stayed in the session scratch folder.
 - Proportions (space map): nose at 0.31 H and mouth at 0.60 H below the eye
-  line (were 0.36 and 0.68), cheeks and jaw wider toward a small chin. The
-  outline is the reference profile blended 60/40 with the old narrower one,
-  because the pure reference profile looked too round on the 3D head.
+  line (were 0.36 and 0.68). Outline: the user found the reference profile
+  too round on the 3D head, twice ("troppo tondo", then "ancora un po'
+  troppo tondo"). The final table keeps the incoming jaw and soft chin below
+  the mouth and only fills the cheekbones above it (half-width 0.875 H at
+  the eyes, 0.70 H at 0.55, 0.50 H at 0.8). Do not widen the lower face again.
 - Skin mesh (`face_mesh.py`): eye openings closed with a lid surface, one
   Loop subdivision (1,396 -> 5,584 triangles) with the four morph targets
   carried through the same operator, normals blended 80% toward an ellipsoid
@@ -24,7 +26,10 @@ found the first result "un po' troppo tondo" and asked for more detail.
 - Eyes and brows (`face_eyes.py`): the stock eye and brow parts are removed.
   New textured layers just in front of the skin: eyeball (iris, pupil,
   catchlights), upper lash band with wing, clumps and lid shadow, lower lash
-  line, brows. Opening 39.6 x 13.3 mm, tilt 11 degrees, iris 18 mm. Each
+  line, brows. Opening 39.6 x 13.3 mm, tilt 11 degrees. After a same-scale
+  comparison with the reference eyes: iris 20.8 mm (cut by both lids, pupil
+  high under the lid), lash band 3.4 to 6.3 mm thick with small clumps,
+  off-white sclera, stronger lid shadow, thicker lower line. Each
   expression rebuilds the layers from the same lid curves; the eyeball grid
   has rows on those curves, so the lids cut it cleanly.
 - `tools/draw_eyes.py` (revision 13) is deleted.

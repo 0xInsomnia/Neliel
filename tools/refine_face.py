@@ -33,11 +33,11 @@ SKIN = 'Viso'
 
 # Reference layout, as fractions of H measured downward from the eye line.
 NOSE_AT, MOUTH_AT = .31, .605
-# Half-width of the face outline (in H) at those fractions: the reference
-# profile blended 60/40 with the incoming, narrower one. The pure reference
-# numbers gave a face the user found too round on the 3D head.
-OUTLINE = [(0, .89), (.17, .86), (.34, .83), (.45, .79), (.55, .745), (.63, .70), (.70, .65),
-           (.76, .59), (.805, .53), (.86, .45), (.91, .355), (.94, .265), (.97, .165)]
+# Half-width of the face outline (in H) at those fractions. The reference
+# profile looked too round on the 3D head, twice; this keeps the incoming jaw
+# and soft chin below the mouth and only fills the cheekbones above it.
+OUTLINE = [(0, .875), (.17, .84), (.34, .79), (.45, .75), (.55, .70), (.63, .65), (.70, .60),
+           (.76, .55), (.805, .50), (.86, .43), (.91, .34), (.94, .25), (.97, .15)]
 WIDEN_LIMIT = 1.30
 EYE_PLANE = .0035          # forward push of the outer eye area (metres)
 CHEEK_FRONT = .0010        # fuller lower cheeks seen from the side

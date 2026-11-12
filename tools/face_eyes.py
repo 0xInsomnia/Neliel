@@ -18,8 +18,8 @@ from refine_subdivide import append, FLOAT, USHORT
 HALF_WIDTH = .0198
 TILT = np.radians(11)
 UPPER, LOWER = .0049, .0084
-IRIS_RADIUS = .0090
-IRIS_CENTRE = np.array([-.0002, -.0009])
+IRIS_RADIUS = .0104
+IRIS_CENTRE = np.array([-.0002, .0005])
 EYE_AT = .493              # eye centre from the midline, in H
 BROW_INNER, BROW_OUTER = (.0165, .0200), (.0560, .0270)   # (|x|, height above the eye line)
 BROW_ARCH = .0022
@@ -39,7 +39,7 @@ def _lower(t):
 def lash_thickness(t):
     """Thickness of the upper lash band above the lid line, metres."""
     t = np.asarray(t, float)
-    return .0032 + .0021 * smooth(-.8, .5, t)
+    return .0034 + .0029 * smooth(-.9, .75, t)
 
 
 def lids(pose='rest'):
@@ -100,13 +100,13 @@ UPPER_PIXELS = (1400, 330)        # upper lash strip, with the lid shadow under 
 LOWER_PIXELS = (936, 94)
 BROW_PIXELS = (720, 100)
 EYE_MARGIN = .0015
-UPPER_RANGE = (-1.12, 1.30)       # along the lid, in t
-UPPER_ABOVE, SHADOW_BELOW = .0090, .0048
+UPPER_RANGE = (-1.05, 1.30)       # along the lid, in t
+UPPER_ABOVE, SHADOW_BELOW = .0096, .0052
 LOWER_RANGE = (-.80, 1.02)
 LOWER_ABOVE, LOWER_BELOW = .0006, .0030
 BROW_HALF = .0032
 
-SCLERA = np.array([247, 243, 250.])
+SCLERA = np.array([234, 228, 242.])
 CORNER = np.array([236, 204, 206.])
 IRIS_TOP, IRIS_MID, IRIS_LOW = np.array([58, 30, 126.]), np.array([120, 66, 198.]), np.array([198, 134, 240.])
 IRIS_GLOW, IRIS_FIBRE = np.array([232, 176, 255.]), np.array([236, 196, 255.])
@@ -208,12 +208,12 @@ def upper_image():
     thick = lash_thickness(inside) * smooth(UPPER_RANGE[0], -.80, tau) ** .8 \
         * (1 - smooth(.98, UPPER_RANGE[1] - .02, tau)) ** .9
     band = smooth(-.00013, .00013, v + .0004) * smooth(-.00013, .00013, thick - v)
-    clumps = _spikes(s, v, thick, [(-.34, .0009, .0012, .9), (.06, .0014, .0014, 1.0), (.38, .0020, .0016, 1.1),
-                                   (.66, .0025, .0017, 1.2), (.90, .0028, .0017, 1.3)])
+    clumps = _spikes(s, v, thick, [(.10, .0010, .0014, 1.0), (.42, .0014, .0016, 1.1),
+                                   (.68, .0018, .0017, 1.2), (.90, .0020, .0017, 1.3)])
     lash = np.maximum(band, clumps)
     streak = np.exp(-((v - .46 * thick) / .00030) ** 2) * smooth(-.6, -.2, tau) * (1 - smooth(.7, 1.05, tau))
     colour = lerp(np.broadcast_to(LASH, (height, width, 3)), LASH_LIGHT, .55 * streak * band)
-    shadow = .70 * smooth(-1.0, .0, v / SHADOW_BELOW) ** 1.3 * (v < 0) * (np.abs(tau) < 1.0) \
+    shadow = .78 * smooth(-1.0, .0, v / SHADOW_BELOW) ** 1.2 * (v < 0) * (np.abs(tau) < 1.0) \
         * smooth(1.0, .86, np.abs(tau) + 0 * v)
     alpha = np.maximum(lash, shadow * (1 - lash))
     colour = lerp(colour, LID_SHADOW, (1 - lash) * (shadow > 0))
@@ -226,7 +226,7 @@ def lower_image():
     v = np.linspace(LOWER_ABOVE, -LOWER_BELOW, height)[:, None]
     s = tau * HALF_WIDTH
     weight = smooth(LOWER_RANGE[0], -.25, tau) * (1 - smooth(.96, LOWER_RANGE[1], tau))
-    half = (.00030 + .00022 * smooth(-.2, .9, tau)) * weight
+    half = (.00045 + .00030 * smooth(-.2, .9, tau)) * weight
     line = smooth(-.00012, .00012, half - np.abs(v + .00022)) * (weight > 0)
     lashes = np.zeros_like(line)
     for centre, length, lean in ((.02, .0010, .25), (.22, .0012, .32), (.42, .0015, .40), (.60, .0016, .46),
