@@ -1,3 +1,13 @@
+# Update — 12 November 2026: lash black as on the sheet
+
+On the user's request the eye outline is now one full black shape
+(`tools/face_eyes.py`): the upper band has no clumps and is fuller toward the
+temple, a black line runs under the whole eye (hair-thin at the inner corner,
+heavy at the outer one) and joins the band in a pointed wing. A closed eye
+draws the band at 42% of its height, so blink and wink read as a fine arc.
+Checked close up against the reference eyes (open, wink) and rebuilt from the
+base; 16 tests pass. `exports/neliel.vrm` regenerated.
+
 # Correction — 12 November 2026: face outline and eyes re-measured
 
 The user kept finding the face too round. Cause found: the first outline

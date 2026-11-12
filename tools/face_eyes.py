@@ -42,7 +42,8 @@ def _lower(t):
 def lash_thickness(t):
     """Thickness of the upper lash band above the lid line, metres."""
     t = np.asarray(t, float)
-    return .0064 * (1 - .5 * np.abs(np.clip(t, -1, 1)) ** 2.2)
+    t = np.clip(t, -1, 1)
+    return .0064 * (1 - np.where(t < 0, .5, .28) * np.abs(t) ** 2.2)   # fuller toward the temple
 
 
 def lids(pose='rest'):
@@ -103,9 +104,9 @@ UPPER_PIXELS = (1400, 330)        # upper lash strip, with the lid shadow under 
 LOWER_PIXELS = (936, 94)
 BROW_PIXELS = (720, 100)
 EYE_MARGIN = .0015
-UPPER_RANGE = (-1.05, 1.17)       # along the lid, in t
+UPPER_RANGE = (-1.05, 1.21)       # along the lid, in t
 UPPER_ABOVE, SHADOW_BELOW = .0096, .0040
-LOWER_RANGE = (-.80, 1.02)
+LOWER_RANGE = (-.95, 1.21)
 LOWER_ABOVE, LOWER_BELOW = .0006, .0030
 BROW_HALF = .0032
 
@@ -114,8 +115,8 @@ CORNER = np.array([236, 204, 206.])
 IRIS_TOP, IRIS_MID, IRIS_LOW = np.array([58, 30, 126.]), np.array([120, 66, 198.]), np.array([198, 134, 240.])
 IRIS_GLOW, IRIS_FIBRE = np.array([232, 176, 255.]), np.array([236, 196, 255.])
 IRIS_RIM, PUPIL = np.array([42, 18, 84.]), np.array([30, 11, 58.])
-LASH, LASH_LIGHT = np.array([26, 17, 28.]), np.array([86, 58, 64.])
-LOWER_LASH = np.array([72, 40, 42.])
+LASH, LASH_LIGHT = np.array([20, 13, 24.]), np.array([60, 42, 56.])
+LOWER_LASH = np.array([26, 16, 26.])
 LID_SHADOW = np.array([70, 52, 112.])
 BROW, BROW_LIGHT = np.array([78, 68, 94.]), np.array([112, 100, 130.])
 
@@ -209,12 +210,11 @@ def upper_image():
     s = tau * HALF_WIDTH
     inside = np.clip(tau, -1, 1)
     thick = lash_thickness(inside) * smooth(UPPER_RANGE[0], -.80, tau) ** .8 \
-        * (1 - smooth(.90, UPPER_RANGE[1] - .01, tau)) ** .8
+        * (1 - smooth(.94, UPPER_RANGE[1], tau))
     band = smooth(-.00013, .00013, v + .0004) * smooth(-.00013, .00013, thick - v)
-    clumps = _spikes(s, v, thick, [(.50, .0010, .0013, 1.1), (.74, .0013, .0014, 1.2), (.93, .0015, .0014, 1.3)])
-    lash = np.maximum(band, clumps)
+    lash = band                                # one full black shape, as on the sheet
     streak = np.exp(-((v - .46 * thick) / .00030) ** 2) * smooth(-.6, -.2, tau) * (1 - smooth(.7, 1.05, tau))
-    colour = lerp(np.broadcast_to(LASH, (height, width, 3)), LASH_LIGHT, .55 * streak * band)
+    colour = lerp(np.broadcast_to(LASH, (height, width, 3)), LASH_LIGHT, .30 * streak * band)
     shadow = .78 * smooth(-1.0, .0, v / SHADOW_BELOW) ** 1.2 * (v < 0) * (np.abs(tau) < 1.0) \
         * smooth(1.0, .86, np.abs(tau) + 0 * v)
     alpha = np.maximum(lash, shadow * (1 - lash))
@@ -227,17 +227,12 @@ def lower_image():
     tau = np.linspace(*LOWER_RANGE, width)[None, :]
     v = np.linspace(LOWER_ABOVE, -LOWER_BELOW, height)[:, None]
     s = tau * HALF_WIDTH
-    weight = smooth(LOWER_RANGE[0], -.25, tau) * (1 - smooth(.96, LOWER_RANGE[1], tau))
-    half = (.00045 + .00030 * smooth(-.2, .9, tau)) * weight
-    line = smooth(-.00012, .00012, half - np.abs(v + .00022)) * (weight > 0)
-    lashes = np.zeros_like(line)
-    for centre, length, lean in ((.02, .0010, .25), (.22, .0012, .32), (.42, .0015, .40), (.60, .0016, .46),
-                                 (.76, .0016, .52), (.90, .0013, .60)):
-        drop = np.clip((-.0004 - v) / length, 0, 1)
-        middle = centre * HALF_WIDTH + lean * length * drop
-        lashes = np.maximum(lashes, smooth(-.0001, .0001, .00030 * (1 - drop) ** 1.2 - np.abs(s - middle))
-                            * (v < -.0003) * (drop < 1))
-    alpha = np.maximum(.95 * line, .90 * lashes)
+    # A black line under the whole eye: hair-thin at the inner corner, heavy
+    # toward the temple, where it joins the wing of the upper band.
+    weight = smooth(LOWER_RANGE[0], -.55, tau) * (1 - smooth(.90, LOWER_RANGE[1], tau))
+    half = (.00026 + .00080 * smooth(-.1, 1.0, tau)) * weight
+    line = smooth(-.00012, .00012, half - np.abs(v - .0002 + half)) * (weight > 0)
+    alpha = .97 * line
     colour = np.broadcast_to(LOWER_LASH, (height, width, 3))
     return np.dstack([colour, 255 * np.clip(alpha, 0, 1)]).round().astype(np.uint8)
 
@@ -316,7 +311,9 @@ def upper_layer(pose, columns=52):
     room = np.where(np.abs(tau) < 1, np.minimum(upper_extent(tau), np.maximum(upper(tau) - lower(tau), 0)), 0)
     lid_row = UPPER_ABOVE / (UPPER_ABOVE + SHADOW_BELOW)
     parts = [(b - k * room, lid_row + k * (1 - lid_row)) for k in (1, .75, .5, .25)]
-    parts += [(b + k * UPPER_ABOVE, lid_row * (1 - k)) for k in (0, .15, .3, .45, .6, .8, 1)]
+    # A closed eye is a fine arc: the band is drawn at under half its height.
+    tall = .42 if pose in ('blink', 'wink') else 1
+    parts += [(b + k * tall * UPPER_ABOVE, lid_row * (1 - k)) for k in (0, .15, .3, .45, .6, .8, 1)]
     rows, v = _levels(parts)
     u = (tau - UPPER_RANGE[0]) / (UPPER_RANGE[1] - UPPER_RANGE[0])
     uv = np.stack([np.broadcast_to(u, rows.shape), v], -1)
