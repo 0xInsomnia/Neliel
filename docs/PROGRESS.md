@@ -1,3 +1,29 @@
+# Checkpoint — 12 November 2026, revision 13 (branch `nelielclaude`)
+
+Head shape after the user's step-by-step corrections (all in
+`refine_proportions.py` / `refine_figure.py`): whole head 9% narrower, skull
+cap a further 8%, crown 15% lower, lower face 12% shorter from the chin,
+softer chin tip, 3.5% wider at ear height. Each was confirmed by moving on
+to the next request; treat them as approved.
+
+`tools/refine_face_hair.py`, new last stage:
+- ears: protruding part 30% smaller;
+- ponytail 25% longer below the shoulders, purple scrunchie at the tie
+  (vertex-coloured, same primitive, so `Coda` stays one skinned mesh);
+- four face-framing locks and three thin fringe strands in the existing thin
+  style, added to `Ciocche laterali`;
+- face texture: coloured fuller lips, shadow under the nose, darker eyelids;
+- triangle clip moved 11 mm back onto the fringe.
+Labels: Revisione 13 / 0.8.0 EXP.
+
+Checks: 16 tests pass; zero glTF errors/warnings. Inspected dressed at phone
+size: portrait front and three-quarter; full figure profile and rear.
+Not inspected: expressions (lips are painted on the base texture and the
+mouth morphs were not re-checked), poses, Costume studio, real phone.
+
+Still open: side braid; fringe and cap are still the smooth helmet; small
+lash pieces at the temples; ears' colour; shoulder tattoo; real outfit.
+
 # Correction — 12 November 2026, revision 12 head shape
 
 The user rejected the head of the first revision 12 build ("testa deforme, a
