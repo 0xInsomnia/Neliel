@@ -2,7 +2,8 @@
 
 Input must be r11. Same space-map approach as revisions 07 and 11. Targets
 come from the user's character sheet (front standing figure): hips clearly
-wider than the waist, full thighs, and narrower, slightly upturned eyes.
+wider than the waist, full thighs, narrower, slightly upturned eyes, and a 12% shorter lower face (the chin
+moves up; asked for after the head was narrowed).
 
 Usage: python3 tools/refine_figure.py r11.glb r12.glb
 """
@@ -22,6 +23,8 @@ CALF = .04
 EYE_X, EYE_Y = .035, 1.597
 EYE_FLATTEN = .18          # vertical compression of the eye opening
 EYE_TILT = .0035           # outer corner up, inner corner down (metres)
+FACE_TOP, CHIN_Y = 1.600, 1.503
+FACE_SQUASH = .12          # lower face shortened, the chin moves up
 
 
 def warp(points, head_bound):
@@ -54,6 +57,11 @@ def warp(points, head_bound):
         g = np.exp(-((x - side * EYE_X) / .034) ** 2 - ((y - EYE_Y) / .024) ** 2) * front
         q[:, 1] -= (y - EYE_Y) * EYE_FLATTEN * g
         q[:, 1] += EYE_TILT * (side * x - EYE_X) / .030 * g
+
+    # Shorter lower face: everything between the eye line and the chin moves
+    # up toward the eye line; the neck below takes up the difference.
+    lift = FACE_SQUASH * (FACE_TOP - np.clip(y, CHIN_Y, FACE_TOP))
+    q[:, 1] += lift * smooth(CHIN_Y - .045, CHIN_Y, y)
     return q
 
 
