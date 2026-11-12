@@ -9,7 +9,8 @@ only the proportions are matched, no data from that file is used.
   from the midline).
 - Arms: 8% longer between shoulder and wrist; the hands keep their size.
 - Head: 9% narrower as a whole (face, ears and hair together, so the jaw
-  shape the user approved is kept) and the crown above the eyes 15% lower.
+  shape the user approved is kept), the skull cap above the eyes a further
+  8% narrower, and the crown 15% lower.
   A jaw-only narrowing was tried first and rejected: it left a wide skull
   over a pointed face ("a zucca").
 
@@ -29,6 +30,7 @@ SHOULDER_X = .115          # arm joint after the shift
 WRIST_X = .542
 ARM_STRETCH = .08
 HEAD_NARROW = .09
+CAP_NARROW = .08            # extra, for the skull cap above the eyes
 CROWN_Y, CROWN_LOWER = 1.640, .15
 
 
@@ -50,7 +52,7 @@ def warp(points, head_bound):
     # Narrower head and lower crown. Hair hanging below the neck keeps its
     # spread; the tail base simply comes down with the crown.
     up = head * smooth(1.40, 1.50, y)
-    q[:, 0] -= x * HEAD_NARROW * up
+    q[:, 0] -= x * (HEAD_NARROW + CAP_NARROW * smooth(1.585, 1.685, y)) * up
     q[:, 1] -= CROWN_LOWER * np.maximum(y - CROWN_Y, 0) * head
     return q
 
