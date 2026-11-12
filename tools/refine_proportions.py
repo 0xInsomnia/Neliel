@@ -8,8 +8,10 @@ only the proportions are matched, no data from that file is used.
 - Shoulders: undo the 22 mm outward shift of revision 07 (arm joint 136 -> 115 mm
   from the midline).
 - Arms: 8% longer between shoulder and wrist; the hands keep their size.
-- Jaw: lower face up to 15% narrower around the cheek line, nothing at the
-  chin tip or at eye level.
+- Head: 9% narrower as a whole (face, ears and hair together, so the jaw
+  shape the user approved is kept) and the crown above the eyes 15% lower.
+  A jaw-only narrowing was tried first and rejected: it left a wide skull
+  over a pointed face ("a zucca").
 
 Usage: python3 tools/refine_proportions.py r10.glb r11.glb
 """
@@ -17,7 +19,7 @@ import sys
 from pathlib import Path
 import numpy as np
 from refine_mesh import Asset, smooth
-from refine_body import apply_map, gauss
+from refine_body import apply_map
 
 SOURCE_GENERATOR = 'Neliel hair 10 / tools/refine_hair.py'
 GENERATOR = 'Neliel proportions 11 / tools/refine_proportions.py'
@@ -26,8 +28,8 @@ SHOULDER_SHIFT = -.021
 SHOULDER_X = .115          # arm joint after the shift
 WRIST_X = .542
 ARM_STRETCH = .08
-JAW_NARROW = .15
-JAW_Y, JAW_SIGMA = 1.577, .042
+HEAD_NARROW = .09
+CROWN_Y, CROWN_LOWER = 1.640, .15
 
 
 def warp(points, head_bound):
@@ -45,9 +47,11 @@ def warp(points, head_bound):
     stretch = ARM_STRETCH * (np.minimum(ax, WRIST_X + .021) - (SHOULDER_X + .021)) * arm
     q[:, 0] += sign * (shift + np.maximum(stretch, 0))
 
-    # Narrower jaw; hair and ears beside the cheeks follow, the back does not.
-    front = 1 - smooth(-.01, .05, z)
-    q[:, 0] -= x * JAW_NARROW * gauss(y, JAW_Y, JAW_SIGMA) * front
+    # Narrower head and lower crown. Hair hanging below the neck keeps its
+    # spread; the tail base simply comes down with the crown.
+    up = head * smooth(1.40, 1.50, y)
+    q[:, 0] -= x * HEAD_NARROW * up
+    q[:, 1] -= CROWN_LOWER * np.maximum(y - CROWN_Y, 0) * head
     return q
 
 

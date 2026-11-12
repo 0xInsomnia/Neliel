@@ -1,3 +1,14 @@
+# Correction — 12 November 2026, revision 12 head shape
+
+The user rejected the head of the first revision 12 build ("testa deforme, a
+zucca"). Cause: the jaw-only narrowing of revision 11 under an unchanged
+skull and hair cap. `refine_proportions.py` now narrows the whole head by 9%
+(face, ears, hair together) and lowers the crown above the eyes by 15%
+instead; the approved jaw shape is kept. Do not narrow the jaw alone again.
+Checked at phone size: portrait front, three-quarter, full figure dressed.
+Known and not fixed: the triangle clip floats about 1.5 cm in front of the
+fringe; small dark lash pieces show at the temples.
+
 # Checkpoint — 12 November 2026, revision 12 (branch `nelielclaude`)
 
 The user supplied a character sheet (standing front figure, expressions,
