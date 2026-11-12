@@ -1,3 +1,37 @@
+# Correction — 12 November 2026: face outline and eyes re-measured
+
+The user kept finding the face too round. Cause found: the first outline
+table had been read on a low-resolution crop where the edge of the hair was
+taken for the edge of the face, so every later table was too wide. Re-read on
+the high-resolution frontal head (eye line to chin = 146 px), mean of both
+sides, half-width in H: 0.80 at the eyes (estimated, hidden by hair), 0.675
+at 0.42, 0.63 at 0.53, 0.515 at 0.69, 0.43 at 0.78, 0.30 at 0.86, 0.17 at
+0.93. `tools/refine_face.py` now:
+- narrows the whole head by 7% at and above the eyes (skull and hair too);
+- shapes the jaw on the face mesh alone (`narrow_face`), so the neck keeps
+  its width and shows beside the chin as in the reference;
+- makes the ear shells 25% smaller toward their join (`shrink_ears`).
+Result against the table: within 0.02 H at every height. Check: the model's
+outline drawn over the reference head, eye line and chin aligned, follows
+the drawn jaw on both sides.
+
+Eyes, measured on the same head (`tools/face_eyes.py`): centre 0.47 H from
+the midline, width 0.46 H (35.8 mm), corner line tilted 7 degrees, opening
+3.9 mm above and 7.9 mm below that line. Upper lid steep at the inner
+corner, highest on the inner half, then straight down to the outer corner,
+which makes the top edge run level: the rhomboid shape of the sheet. Iris
+radius 10.7 mm, cut by both lids. Lash band up to 6.4 mm thick, short wing
+at 40 degrees. Brows: thin, from 20 mm to 55 mm off the midline, rising
+13 degrees. Nose at 0.32 H, mouth at 0.615 H.
+
+Checks: 16 tests pass; zero glTF errors/warnings; full rebuild identical to
+the reviewed file. Inspected: front and three-quarter without hair; smile,
+blink, wink, surprised; the studio page at phone size (front and both
+three-quarters with hair). `exports/neliel.vrm` regenerated.
+Not inspected: profile, Costume studio, contours, poses, real phone.
+Next, as agreed with the user: hair (strands in front of the face, braid,
+general shape), then body and proportions.
+
 # Export — 12 November 2026: VRM file
 
 `tools/export_vrm.py` writes `exports/neliel.vrm` (VRM 0.0) from

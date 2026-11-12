@@ -15,31 +15,34 @@ from PIL import Image
 from refine_mesh import smooth
 from refine_subdivide import append, FLOAT, USHORT
 
-HALF_WIDTH = .0198
-TILT = np.radians(11)
-UPPER, LOWER = .0049, .0084
-IRIS_RADIUS = .0104
-IRIS_CENTRE = np.array([-.0002, .0005])
-EYE_AT = .493              # eye centre from the midline, in H
-BROW_INNER, BROW_OUTER = (.0165, .0200), (.0560, .0270)   # (|x|, height above the eye line)
-BROW_ARCH = .0022
-BROW_THICKNESS = (.0034, .0014)
+HALF_WIDTH = .0179         # .230 H
+TILT = np.radians(7)       # the line through the corners; the outer corner is higher
+UPPER, LOWER = .0039, .0079
+IRIS_RADIUS = .0107
+IRIS_CENTRE = np.array([0, -.0006])
+EYE_AT = .47               # eye centre from the midline, in H
+BROW_INNER, BROW_OUTER = (.0202, .0228), (.0545, .0310)   # (|x|, height above the eye line)
+BROW_ARCH = .0008
+BROW_THICKNESS = (.0021, .0012)
 
 
 def _upper(t):
+    """Upper lid above the corner line: steep at the inner corner, highest on
+    the inner half, then a long straight fall to the outer corner. On the
+    tilted eye this makes the top edge run level, the rhomboid of the sheet."""
     t = np.clip(t, -1, 1)
-    return np.clip(1 - t * t, 0, 1) ** .9 * (1 - .45 * t) / 1.0507
+    return np.where(t < -.5, ((t + 1) / .5) ** .74, np.where(t < 0, 1.0, (1 - np.maximum(t, 0)) ** .556))
 
 
 def _lower(t):
     t = np.clip(t, -1, 1)
-    return np.clip(1 - t * t, 0, 1) ** 1.1
+    return np.clip(1 - t * t, 0, 1) ** .6 * (1 + .08 * t)
 
 
 def lash_thickness(t):
     """Thickness of the upper lash band above the lid line, metres."""
     t = np.asarray(t, float)
-    return .0034 + .0029 * smooth(-.9, .75, t)
+    return .0064 * (1 - .5 * np.abs(np.clip(t, -1, 1)) ** 2.2)
 
 
 def lids(pose='rest'):
@@ -100,8 +103,8 @@ UPPER_PIXELS = (1400, 330)        # upper lash strip, with the lid shadow under 
 LOWER_PIXELS = (936, 94)
 BROW_PIXELS = (720, 100)
 EYE_MARGIN = .0015
-UPPER_RANGE = (-1.05, 1.30)       # along the lid, in t
-UPPER_ABOVE, SHADOW_BELOW = .0096, .0052
+UPPER_RANGE = (-1.05, 1.17)       # along the lid, in t
+UPPER_ABOVE, SHADOW_BELOW = .0096, .0040
 LOWER_RANGE = (-.80, 1.02)
 LOWER_ABOVE, LOWER_BELOW = .0006, .0030
 BROW_HALF = .0032
@@ -206,10 +209,9 @@ def upper_image():
     s = tau * HALF_WIDTH
     inside = np.clip(tau, -1, 1)
     thick = lash_thickness(inside) * smooth(UPPER_RANGE[0], -.80, tau) ** .8 \
-        * (1 - smooth(.98, UPPER_RANGE[1] - .02, tau)) ** .9
+        * (1 - smooth(.90, UPPER_RANGE[1] - .01, tau)) ** .8
     band = smooth(-.00013, .00013, v + .0004) * smooth(-.00013, .00013, thick - v)
-    clumps = _spikes(s, v, thick, [(.10, .0010, .0014, 1.0), (.42, .0014, .0016, 1.1),
-                                   (.68, .0018, .0017, 1.2), (.90, .0020, .0017, 1.3)])
+    clumps = _spikes(s, v, thick, [(.50, .0010, .0013, 1.1), (.74, .0013, .0014, 1.2), (.93, .0015, .0014, 1.3)])
     lash = np.maximum(band, clumps)
     streak = np.exp(-((v - .46 * thick) / .00030) ** 2) * smooth(-.6, -.2, tau) * (1 - smooth(.7, 1.05, tau))
     colour = lerp(np.broadcast_to(LASH, (height, width, 3)), LASH_LIGHT, .55 * streak * band)
@@ -256,7 +258,7 @@ def brow_image():
 # every expression from the same curves, so the lids clip the eye exactly.
 
 EYE_COLUMNS = 41
-WING_ANGLE = np.radians(8)
+WING_ANGLE = np.radians(40)
 OFFSET = {'eye': .0007, 'lower': .0010, 'upper': .0013, 'brow': .0006}
 EYE_MATERIAL, LASH_MATERIAL = 'Sclera e iride', 'Ciglia e sopracciglia'
 STOCK_PARTS = ('Sclera', 'Iride viola', 'Riflesso occhi', 'Contorno occhi', 'Ciglia', 'Sopracciglia')

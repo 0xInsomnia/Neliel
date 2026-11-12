@@ -107,7 +107,7 @@ def paint_form(p):
 def paint_cheeks(p):
     face = p.face
     for side in (-1, 1):
-        blush = p.blob(side * .0400, face.eye_y - .0215, .0215, .0098, side * .22)
+        blush = p.blob(side * .0350, face.eye_y - .0215, .0190, .0090, side * .22)
         p.mix(BLUSH, .52 * blush * p.front)
 
 
@@ -143,7 +143,7 @@ def paint_mouth(p, slit, corner):
     light = np.exp(-((x - .0008) / .0034) ** 2 - ((p.y - (line - .0019)) / .0008) ** 2)
     p.mix(LIP_LIGHT, .40 * light * p.front)
     # The parting line runs a little past the corners and is heavier near them.
-    reach = 1 - smooth(corner - .0002, corner + .0009, ax)
+    reach = 1 - smooth(corner + .0008, corner + .0030, ax)
     width = .00040 + .00018 * np.exp(-((ax - (corner - .0012)) / .0022) ** 2)
     stroke = np.exp(-((p.y - line) / width) ** 2)
     p.mix(LIP_LINE, .92 * stroke * reach * p.front)
@@ -181,8 +181,10 @@ def mouth_line(points):
     corner = float(np.abs(x).max())
 
     def slit(v):
-        v = np.clip(np.abs(v), 0, corner + .002)
-        return c[0] + c[1] * v ** 2 + c[2] * v ** 4
+        v = np.abs(v)
+        inside = np.minimum(v, corner)
+        # Past the corners the drawn line continues a little, turning upward.
+        return c[0] + c[1] * inside ** 2 + c[2] * inside ** 4 + .30 * np.maximum(v - corner, 0)
     return slit, corner
 
 

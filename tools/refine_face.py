@@ -32,15 +32,16 @@ GENERATOR = 'Neliel face 14 / tools/refine_face.py'
 SKIN = 'Viso'
 
 # Reference layout, as fractions of H measured downward from the eye line.
-NOSE_AT, MOUTH_AT = .31, .605
-# Half-width of the face outline (in H) at those fractions. The reference
-# profile looked too round on the 3D head, twice; this keeps the incoming jaw
-# and soft chin below the mouth and only fills the cheekbones above it.
-OUTLINE = [(0, .875), (.17, .84), (.34, .79), (.45, .75), (.55, .70), (.63, .65), (.70, .60),
-           (.76, .55), (.805, .50), (.86, .43), (.91, .34), (.94, .25), (.97, .15)]
-WIDEN_LIMIT = 1.30
+# Re-measured on the high-resolution frontal head: the first reading had taken
+# the edge of the hair for the edge of the face and came out far too wide.
+NOSE_AT, MOUTH_AT = .32, .615
+# Half-width of the face outline (in H) at those fractions, mean of both sides.
+OUTLINE = [(0, .80), (.20, .755), (.42, .675), (.53, .631), (.61, .581), (.69, .515),
+           (.78, .426), (.86, .297), (.93, .171), (.97, .09)]
+HEAD_NARROW = .93          # whole head at and above the eyes, hair included
+EAR_SMALLER = .25          # ears drawn toward where they join the head
 EYE_PLANE = .0035          # forward push of the outer eye area (metres)
-CHEEK_FRONT = .0010        # fuller lower cheeks seen from the side
+CHEEK_FRONT = .0        # fuller lower cheeks seen from the side
 CHIN_FORWARD = .0020
 LIPS_BACK = .0015
 NOSE_TIP = .0015
@@ -148,15 +149,6 @@ def make_warp(face):
                       [0, NOSE_AT, MOUTH_AT, 1])
     nose_y, mouth_y = eye_y - NOSE_AT * H, eye_y - MOUTH_AT * H
 
-    # Sideways scale of the outline, from the measured and the reference profile.
-    f = np.linspace(-.6, 1.25, 186)
-    measured = np.maximum(face.half_width(eye_y - f * H), 1e-4)
-    wanted = np.interp(f, *zip(*OUTLINE)) * H
-    scale = np.clip(wanted / measured, 1, WIDEN_LIMIT)
-    scale = np.where(f < 0, 1 + (np.interp(0, f, scale) - 1) * smooth(-.45, 0, f), scale)
-    scale = np.where(f > .97, 1 + (np.interp(.97, f, scale) - 1) * (1 - smooth(1.02, 1.22, f)), scale)
-    scale = np.convolve(np.pad(scale, 4, mode='edge'), np.ones(9) / 9, mode='valid')
-
     def warp(points, head_bound):
         p = np.asarray(points, dtype=np.float64)
         q = p.copy()
@@ -171,15 +163,12 @@ def make_warp(face):
         lifted = y + (eye_y - layout(fraction) * H - y) * middle
         q[:, 1] = lifted
 
-        # Fuller cheeks and jaw. The middle keeps its width so nose and mouth
-        # are not stretched; ears move out with the cheeks. Hair beside the
-        # face follows by height only and returns to its place gradually below
-        # the chin, so wavy locks are not bent by their own depth.
-        skin_scale = (np.interp(fraction, f, scale) - 1) * (1 - smooth(.0, .035, z))
-        hair_scale = (np.interp(np.minimum(fraction, .97), f, scale) - 1) \
-            * (1 - smooth(1.0, 2.4, fraction)) * (1 - smooth(.03, .10, z))
-        widen = np.where(head_bound, hair_scale, skin_scale) * smooth(.2, .8, ax / reach)
-        q[:, 0] += x * widen
+        # The whole head a little narrower, skull and hair included, so the
+        # skull does not stay wide over a slimmer face. It fades out toward the
+        # jaw, which `narrow_face` shapes on the face mesh alone: the neck must
+        # keep its width and show beside the chin, as in the reference.
+        narrow = (HEAD_NARROW - 1) * (1 - smooth(.30, .75, fraction)) * smooth(.2, .8, ax / reach)
+        q[:, 0] += x * narrow
 
         # Depth: a flatter plane across the eyes, fuller lower cheeks, chin
         # forward, lips a touch back and a slightly sharper nose tip.
@@ -194,6 +183,77 @@ def make_warp(face):
         q[:, 1] += MOUTH_CORNERS * corner * gauss(lifted, mouth_y, .006) * front
         return q
     return warp
+
+
+def narrow_face(asset, face):
+    """Bring the outline of the face mesh to the reference profile.
+
+    Only the face mesh moves (skin, ears, mouth interior and their morph
+    targets); hair and neck stay. The middle of the face keeps its width.
+    """
+    doc = asset.d
+    mesh = next(m for m in doc['meshes'] if m['name'] == 'Viso')
+    f = np.linspace(-.2, 1.1, 131)
+    measured = np.maximum(face.half_width(face.eye_y - f * face.height), 1e-4)
+    wanted = np.interp(f, *zip(*OUTLINE)) * face.height
+    scale = np.clip(wanted / measured, .5, 1.25)
+    scale = np.where(f > .97, np.interp(.97, f, scale), scale)
+    scale = np.where(f < 0, 1 + (np.interp(0, f, scale) - 1) * smooth(-.15, 0, f), scale)
+    scale = np.convolve(np.pad(scale, 2, mode='edge'), np.ones(5) / 5, mode='valid')
+
+    def move(points):
+        q = points.copy()
+        x, y = points[:, 0], points[:, 1]
+        reach = np.maximum(face.half_width(y), .004)
+        amount = (np.interp((face.eye_y - y) / face.height, f, scale) - 1) * smooth(.15, .75, np.abs(x) / reach)
+        q[:, 0] += x * amount
+        return q
+
+    done = set()
+    for primitive in mesh['primitives']:
+        accessor = primitive['attributes']['POSITION']
+        if accessor in done:
+            continue
+        done.add(accessor)
+        base = asset.array(accessor).astype(np.float64)
+        moved = move(base)
+        for target in primitive.get('targets', []):
+            if target['POSITION'] in done:
+                continue
+            done.add(target['POSITION'])
+            delta = asset.array(target['POSITION']).astype(np.float64)
+            asset.set(target['POSITION'], (move(base + delta) - moved).astype(np.float32))
+        asset.set(accessor, moved.astype(np.float32))
+
+
+def shrink_ears(asset):
+    """Smaller ears for the slimmer face. The join with the head stays closed:
+    vertices on the seam do not move, the rest is drawn toward its centre."""
+    doc = asset.d
+    _, part = primitive_of(doc, SKIN)
+    accessor = part['attributes']['POSITION']
+    points = asset.array(accessor).astype(np.float64)
+    triangles = asset.array(part['indices']).reshape(-1, 3).astype(int)
+    label = uv_islands(triangles, len(points))
+    values, counts = np.unique(label, return_counts=True)
+    main = np.unique(triangles[label == values[np.argmax(counts)]])
+    on_head = {tuple(row) for row in np.round(points[main], 5)}
+    moved = points.copy()
+    ears = 0
+    for value, count in zip(values, counts):
+        island = np.unique(triangles[label == value])
+        if value == values[np.argmax(counts)] or len(island) < 20:
+            continue
+        seam = np.array([tuple(row) in on_head for row in np.round(points[island], 5)])
+        if seam.sum() < 3:                 # a loose shell: use the part nearest the head
+            seam = np.abs(points[island, 0]) <= np.percentile(np.abs(points[island, 0]), 25)
+        root = points[island][seam]
+        distance = np.linalg.norm(points[island][:, None] - root[None], axis=2).min(1)
+        weight = smooth(0, .010, distance) * EAR_SMALLER
+        moved[island] += (root.mean(0) - points[island]) * weight[:, None]
+        ears += 1
+    asset.set(accessor, moved.astype(np.float32))
+    return ears
 
 
 def rebuild_skin(asset, face):
@@ -285,6 +345,9 @@ def build(source, target, preview=None):
     before = Landmarks(asset)
     print('Before:', before.describe())
     apply_map(asset, make_warp(before))
+    for _ in range(2):                     # the second pass closes what smoothing left
+        narrow_face(asset, Landmarks(asset))
+    print('Ear shells made smaller:', shrink_ears(asset))
     mapped = Landmarks(asset)
     print('After: ', mapped.describe())
     skin = rebuild_skin(asset, mapped)
