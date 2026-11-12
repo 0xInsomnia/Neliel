@@ -1,3 +1,14 @@
+# Export — 12 November 2026: VRM file
+
+`tools/export_vrm.py` writes `exports/neliel.vrm` (VRM 0.0) from
+`assets/neliel-refined.glb`, for use in other apps. Humanoid map of 54 bones
+from the J_Bip_* rig, expressions Joy/Fun (smile), Surprised, Blink,
+Blink_L (wink), glTF materials kept (VRM_USE_GLTFSHADER), ponytail as one
+spring-bone chain. Checked by loading it with @pixiv/three-vrm 3 in a
+headless browser: 54 bones, 6 expressions, 4 spring joints, posed arms and
+the joy expression render correctly. Not checked in VRoid Studio, VSeeFace or
+Blender. Re-run the exporter after every model revision.
+
 # Checkpoint — 12 November 2026, revision 14: the face rebuilt (branch `nelielclaude`)
 
 The user asked for the face to be redone against the reference sheet, then
