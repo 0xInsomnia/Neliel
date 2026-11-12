@@ -284,7 +284,7 @@ def paint_face(asset):
     tint(blob(0, nose - .0062, .0060, .0026), np.array([.80, .64, .62]), .55)           # under the nose
     for side in (-1, 1):
         tint(blob(side * .0052, nose - .0040, .0020, .0016), np.array([.70, .52, .52]), .45)
-        tint(blob(side * .036, lid + .0035, .026, .0045), np.array([.80, .62, .74]), .55)  # eyelid
+        tint(blob(side * .036, lid + .0035, .026, .0045), np.array([.80, .62, .74]), .32)  # eyelid
 
     encoded = io.BytesIO()
     Image.fromarray(np.clip(rgb, 0, 255).round().astype(np.uint8)).save(encoded, format='JPEG', quality=93)
@@ -334,6 +334,33 @@ def half_lids(asset, amount=.32, iris=.90):
         entry['min'], entry['max'] = base.astype(np.float32).min(0).tolist(), base.astype(np.float32).max(0).tolist()
 
 
+def thin_brows(asset, scale=.62, lower=.0022):
+    """Thinner eyebrows, a little closer to the eyes."""
+    doc = asset.d
+    mesh, part = primitive_of(doc, 'Sopracciglia')
+    accessor = part['attributes']['POSITION']
+    points = asset.array(accessor).astype(np.float64)
+    used = np.unique(asset.array(part['indices']))
+    for side in (-1, 1):
+        brow = used[np.sign(points[used, 0]) == side]
+        middle = (points[brow, 1].min() + points[brow, 1].max()) / 2
+        points[brow, 1] = middle + (points[brow, 1] - middle) * scale - lower
+    asset.set(accessor, points.astype(np.float32))
+    entry = doc['accessors'][accessor]
+    entry['min'], entry['max'] = points.astype(np.float32).min(0).tolist(), points.astype(np.float32).max(0).tolist()
+
+
+def drop_head_details(asset):
+    """Remove the provisional outfit's dark ornaments at the temples."""
+    doc = asset.d
+    _, part = primitive_of(doc, 'Dettagli')
+    points = asset.array(part['attributes']['POSITION'])
+    triangles = asset.array(part['indices']).reshape(-1, 3).astype(int)
+    keep = (points[triangles][:, :, 1] < 1.56).any(1)
+    part['indices'] = append(asset, triangles[keep].reshape(-1, 1), 'SCALAR', USHORT, target=34963)
+    return int((~keep).sum())
+
+
 def eye_opening(asset):
     """Boundary points of each eye opening in the face skin, by side."""
     doc = asset.d
@@ -370,11 +397,13 @@ def build(source, target):
     add_scrunchie(asset)
     paint_face(asset)
     half_lids(asset)
+    thin_brows(asset)
+    removed = drop_head_details(asset)
     eye_vertices = draw_eyes(asset, eye_opening(asset))
     compact(asset)
     doc['asset']['generator'] = GENERATOR
     asset.write(target)
-    print(f'Added {locks} locks and the scrunchie')
+    print(f'Added {locks} locks and the scrunchie; removed {removed} ornament triangles')
 
 
 if __name__ == '__main__':

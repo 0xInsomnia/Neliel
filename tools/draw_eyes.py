@@ -30,6 +30,7 @@ def linear(rgb):
 
 WHITE, SHADE = linear([.97, .96, .99]), linear([.70, .66, .84])
 LASH, LOWER_LASH = linear([.07, .04, .11]), linear([.30, .16, .22])
+CREASE = linear([.58, .34, .32])
 RIM, PUPIL = linear([.20, .09, .42]), linear([.11, .05, .24])
 IRIS_TOP, IRIS_BOTTOM, IRIS_RING = linear([.36, .17, .72]), linear([.74, .55, 1.0]), linear([.56, .34, .92])
 
@@ -130,6 +131,13 @@ def eye(pose, light):
         top = upper(np.array([at]))[0] + .0016 + .0028 * float(smooth(-.7, .9, at))
         grid([(base * HALF_WIDTH, upper(base) + .0016 + .0024 * smooth(-.7, .9, base), np.full(2, 4.0), np.tile(LASH, (2, 1))),
               (np.array([tip_a, tip_a]), np.full(2, top + length), np.full(2, 4.0), np.tile(LASH, (2, 1)))])
+
+    # Eyelid crease: a fine line above the lash, in a skin shadow tone.
+    ct = np.linspace(-.72, .88, 22)
+    crease = upper(ct) + .0016 + .0028 * smooth(-.7, .9, ct) + .0024 * np.clip(1 - ct * ct, 0, 1) ** .5
+    fade = .00045 * np.clip(1 - np.abs((ct - .08) / .82) ** 3, 0, 1)
+    grid([(ct * HALF_WIDTH, crease - fade, np.full(22, 4.0), np.tile(CREASE, (22, 1))),
+          (ct * HALF_WIDTH, crease + fade, np.full(22, 4.0), np.tile(CREASE, (22, 1)))])
 
     # Lower lash: a thin line on the outer two thirds.
     bt = np.linspace(-.25, 1, 20)
