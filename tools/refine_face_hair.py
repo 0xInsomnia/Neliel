@@ -11,6 +11,8 @@ Input must be r12. Targets are the user's character sheet.
   darker upper eyelid.
 - Upper eyelids lowered by baking a third of the blink into the rest shape;
   irises 10% smaller.
+- Eyes redrawn from curves (tools/draw_eyes.py): almond opening, round iris,
+  thick winged upper lash, thin lower lash; the stock eye parts are removed.
 - The triangle clip sits on the fringe instead of floating in front of it.
 
 Usage: python3 tools/refine_face_hair.py r12.glb r13.glb
@@ -26,6 +28,7 @@ from refine_subdivide import append, FLOAT, USHORT
 from refine_identity import image_of
 from refine_hair import compact
 from build_study_texture import texel_positions
+from draw_eyes import draw as draw_eyes
 
 SOURCE_GENERATOR = 'Neliel figure 12 / tools/refine_figure.py'
 GENERATOR = 'Neliel face and hair 13 / tools/refine_face_hair.py'
@@ -62,6 +65,10 @@ def warp(points, head_bound):
         * smooth(-.015, .0, z) * (1 - hair)
     root = EAR_ROOT * np.stack([sign, np.ones_like(x), np.ones_like(x)], 1)
     q += (root - p) * (EAR_SHRINK * ear)[:, None]
+
+    # Level the eye openings a little so the drawn eyes need less slant.
+    level = np.exp(-((ax - .038) / .030) ** 2 - ((y - 1.596) / .022) ** 2) * (1 - smooth(-.035, -.015, z))
+    q[:, 1] -= .16 * (ax - .038) * level
 
     # Longer ponytail: only the part hanging behind the back is stretched.
     tail = hair * smooth(.04, .07, z)
@@ -327,6 +334,27 @@ def half_lids(asset, amount=.32, iris=.90):
         entry['min'], entry['max'] = base.astype(np.float32).min(0).tolist(), base.astype(np.float32).max(0).tolist()
 
 
+def eye_opening(asset):
+    """Boundary points of each eye opening in the face skin, by side."""
+    doc = asset.d
+    _, part = primitive_of(doc, 'Viso')
+    points = asset.array(part['attributes']['POSITION']).astype(np.float64)
+    triangles = asset.array(part['indices']).reshape(-1, 3).astype(int)
+    _, weld = np.unique(np.round(points, 5), axis=0, return_inverse=True)
+    weld = weld.reshape(-1)
+    welded = np.zeros((weld.max() + 1, 3))
+    welded[weld] = points
+    corners = weld[triangles]
+    edges = np.sort(np.concatenate([corners[:, [0, 1]], corners[:, [1, 2]], corners[:, [2, 0]]]), axis=1)
+    edges, uses = np.unique(edges, axis=0, return_counts=True)
+    border = welded[np.unique(edges[uses == 1])]
+
+    def side(sign):
+        x = sign * border[:, 0]
+        return border[(x > .005) & (x < .075) & (border[:, 1] > 1.57) & (border[:, 1] < 1.64) & (border[:, 2] < -.03)]
+    return side
+
+
 def build(source, target):
     if Path(source).resolve() == Path(target).resolve():
         raise ValueError('Preserve the source revision')
@@ -342,6 +370,7 @@ def build(source, target):
     add_scrunchie(asset)
     paint_face(asset)
     half_lids(asset)
+    eye_vertices = draw_eyes(asset, eye_opening(asset))
     compact(asset)
     doc['asset']['generator'] = GENERATOR
     asset.write(target)

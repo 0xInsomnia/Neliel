@@ -1,3 +1,17 @@
+# Update — 12 November 2026, revision 13 eyes
+
+The user rejected reshaping the stock eyes ("vanno ridisegnati, forma
+totalmente diversa"). `tools/draw_eyes.py` now replaces the stock sclera,
+iris, catchlight, contour and lash primitives with one vertex-coloured
+primitive built from curves (almond opening, round clipped iris, winged
+upper lash, thin lower lash) lying just in front of the skin, with its own
+smile / surprised / blink / wink targets. `refine_face_hair.py` also lowers
+the lids by baking 32% of blink and levels the eye openings. The earlier
+squash in `refine_figure.py` is reduced to 6%.
+Checked close up, dressed: front, three-quarter, smile, surprised, wink.
+Not checked: blink in motion, real phone. The unused stock eye textures are
+still embedded in the file.
+
 # Checkpoint — 12 November 2026, revision 13 (branch `nelielclaude`)
 
 Head shape after the user's step-by-step corrections (all in
