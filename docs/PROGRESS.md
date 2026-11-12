@@ -1,3 +1,38 @@
+# Checkpoint — 12 November 2026, revision 15: body proportions (branch `nelielclaude`)
+
+The user asked for the body proportions before the hair.
+`tools/refine_physique.py` is the new last stage (r14 -> r15). Measured on
+the front and side turnaround figures of the private sheet, scaled to the
+model's height; heights (chin, shoulders, bust, waist, navel, crotch),
+shoulder joints and bust width already matched within the reading error
+and are unchanged.
+
+| mm | before | target | after |
+|---|---|---|---|
+| trunk half-width under the bust | 96 | 74 | 78 |
+| waist | 87 | 73 | 74 |
+| navel | 105 | 82 | 86 |
+| top of the hips | 146 | 108 | 112 |
+| hips, widest | 182 | 178 | 180 |
+| leg width, upper thigh | 124 | 161 | 157 |
+| lower thigh | 80 | 119 | 115 |
+| knee | 71 | 95 | 94 |
+| calf | 88 | 91 | 92 |
+| ankle | 44 | 56 | 54 |
+
+Legs grow mostly outward (inner gap kept); only the middle of the thigh
+deepens. Garments and stockings follow the same map. This supersedes the
+earlier hip tuning: the full hip width stays, but the flare starts lower.
+Labels: Revisione 15 / 0.10.0 EXP. `exports/neliel.vrm` regenerated.
+
+Checks: 16 tests pass; zero glTF errors/warnings; rebuilt from the base.
+Inspected front, three-quarter, profile and rear, both in Costume studio and
+dressed. Not inspected: poses and wave (knees, elbows under the new
+widths), contours, real phone.
+Not changed, though the sheet differs slightly: knee about 2 cm lower and
+arms about 6% longer in the reference (inside the reading error); feet.
+Next: hair.
+
 # Update — 12 November 2026: lash black as on the sheet
 
 On the user's request the eye outline is now one full black shape

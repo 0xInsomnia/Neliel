@@ -117,10 +117,10 @@ el('zoom-in').onclick = () => { orbit.zoomIn(); say('Zoom avanti'); };
 el('zoom-out').onclick = () => { orbit.zoomOut(); say('Zoom indietro'); };
 
 try {
-  const modelName = original ? 'Base 0.3' : 'Revisione 14';
+  const modelName = original ? 'Base 0.3' : 'Revisione 15';
   el('model-label').textContent = modelName;
   el('compare-model').href = original ? './' : '?model=original';
-  el('compare-model').textContent = original ? 'Mostra revisione 14' : 'Confronta con la base 0.3';
+  el('compare-model').textContent = original ? 'Mostra revisione 15' : 'Confronta con la base 0.3';
   avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, {
     widen: original ? 1.08 : 1,
     studyMap: original ? null : new URL('../assets/body-study.png', import.meta.url),
