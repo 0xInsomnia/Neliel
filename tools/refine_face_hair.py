@@ -1,4 +1,4 @@
-"""Revision 13: smaller ears, painted face finish, first hair additions.
+"""Revision 13: smaller ears and first hair additions.
 
 Input must be r12. Targets are the user's character sheet.
 
@@ -7,28 +7,21 @@ Input must be r12. Targets are the user's character sheet.
   scrunchie at the tie, painted with vertex colours in the same primitive.
 - Face-framing locks and three thin fringe strands, built in the same thin
   style as the existing side locks and added to that mesh.
-- Face texture: fuller coloured lips, a soft shadow under the nose and a
-  darker upper eyelid.
-- Upper eyelids lowered by baking a third of the blink into the rest shape;
-  irises 10% smaller.
-- Eyes redrawn from curves (tools/draw_eyes.py): almond opening, round iris,
-  thick winged upper lash, thin lower lash; the stock eye parts are removed.
 - The triangle clip sits on the fringe instead of floating in front of it.
+- The provisional outfit's dark ornaments at the temples are removed.
+
+The face itself (proportions, skin texture, eyes, brows) is rebuilt in
+revision 14, tools/refine_face.py.
 
 Usage: python3 tools/refine_face_hair.py r12.glb r13.glb
 """
-import io
 import sys
 from pathlib import Path
 import numpy as np
-from PIL import Image, ImageFilter
 from refine_mesh import Asset, smooth
 from refine_body import apply_map, world_positions
 from refine_subdivide import append, FLOAT, USHORT
-from refine_identity import image_of
 from refine_hair import compact
-from build_study_texture import texel_positions
-from draw_eyes import draw as draw_eyes
 
 SOURCE_GENERATOR = 'Neliel figure 12 / tools/refine_figure.py'
 GENERATOR = 'Neliel face and hair 13 / tools/refine_face_hair.py'
@@ -65,10 +58,6 @@ def warp(points, head_bound):
         * smooth(-.015, .0, z) * (1 - hair)
     root = EAR_ROOT * np.stack([sign, np.ones_like(x), np.ones_like(x)], 1)
     q += (root - p) * (EAR_SHRINK * ear)[:, None]
-
-    # Level the eye openings a little so the drawn eyes need less slant.
-    level = np.exp(-((ax - .038) / .030) ** 2 - ((y - 1.596) / .022) ** 2) * (1 - smooth(-.035, -.015, z))
-    q[:, 1] -= .16 * (ax - .038) * level
 
     # Longer ponytail: only the part hanging behind the back is stretched.
     tail = hair * smooth(.04, .07, z)
@@ -247,109 +236,6 @@ def add_scrunchie(asset):
     extend(asset, primitive, points, triangles, colour, 0)
 
 
-def paint_face(asset):
-    doc = asset.d
-    _, primitive = primitive_of(doc, 'Viso')
-    material = doc['materials'][primitive['material']]
-    image, picture = image_of(asset, material)
-    rgb = np.array(picture.convert('RGB')).astype(np.float64)
-    position, covered = texel_positions(asset, primitive, picture.width)
-    x, y, z = np.moveaxis(position, -1, 0)
-    ax = np.abs(x)
-    front = covered * (1 - smooth(-.06, -.04, z))
-
-    centre = asset.array(primitive['attributes']['POSITION'])
-    centre = centre[(np.abs(centre[:, 0]) < .004) & (centre[:, 2] < -.05)]
-    _, mouth = primitive_of(doc, 'Bocca')
-    lips = asset.array(mouth['attributes']['POSITION'])[np.unique(asset.array(mouth['indices']))]
-    line = np.median(lips[lips[:, 2] < np.percentile(lips[:, 2], 30)][:, 1])   # mouth line height
-    nose = centre[np.argmin(centre[:, 2])][1]
-    _, lashes = primitive_of(doc, 'Ciglia')
-    lash = asset.array(lashes['attributes']['POSITION'])[np.unique(asset.array(lashes['indices']))]
-    lid = lash[:, 1].max()
-
-    def blob(cx, cy, rx, ry):
-        return np.exp(-((x - cx) / rx) ** 2 - ((y - cy) / ry) ** 2)
-
-    def tint(mask, colour, strength):
-        m = np.clip(mask * strength, 0, 1)[..., None] * front[..., None]
-        rgb[:] = rgb + (rgb * colour - rgb) * m
-
-    lower = blob(0, line - .0052, .0125, .0040)
-    upper = blob(0, line + .0030, .0120, .0024) * (1 - .5 * blob(0, line + .0045, .0030, .0020))
-    tint(lower, np.array([1.00, .70, .72]), .70)
-    tint(upper, np.array([.93, .60, .64]), .75)
-    tint(blob(0, line - .0058, .0045, .0014), np.array([1.10, 1.08, 1.06]), .55)        # lip highlight
-    tint(np.exp(-((y - line) / .0009) ** 2) * (ax < .0135), np.array([.62, .40, .44]), .55)
-    tint(blob(0, nose - .0062, .0060, .0026), np.array([.80, .64, .62]), .55)           # under the nose
-    for side in (-1, 1):
-        tint(blob(side * .0052, nose - .0040, .0020, .0016), np.array([.70, .52, .52]), .45)
-        tint(blob(side * .036, lid + .0035, .026, .0045), np.array([.80, .62, .74]), .32)  # eyelid
-
-    encoded = io.BytesIO()
-    Image.fromarray(np.clip(rgb, 0, 255).round().astype(np.uint8)).save(encoded, format='JPEG', quality=93)
-    data = encoded.getvalue()
-    asset.b += b'\0' * (-len(asset.b) % 4)
-    doc['bufferViews'].append({'buffer': 0, 'byteOffset': len(asset.b), 'byteLength': len(data)})
-    asset.b += data
-    asset.b += b'\0' * (-len(asset.b) % 4)
-    doc['buffers'][0]['byteLength'] = len(asset.b)
-    image['bufferView'] = len(doc['bufferViews']) - 1
-    image['mimeType'] = 'image/jpeg'
-
-
-def half_lids(asset, amount=.32, iris=.90):
-    """Lowered upper lids with round irises, as in the reference close-ups.
-
-    Part of the blink morph is baked into the rest shape; blink and wink keep
-    closing the eye fully. The irises become slightly smaller.
-    """
-    doc = asset.d
-    mesh = next(m for m in doc['meshes'] if m['name'] == 'Viso')
-    names = mesh['extras']['targetNames']
-    blink, wink = names.index('blink'), names.index('wink')
-    done = set()
-    for primitive in mesh['primitives']:
-        accessor = primitive['attributes']['POSITION']
-        if accessor in done:
-            continue
-        done.add(accessor)
-        base = asset.array(accessor).astype(np.float64)
-        closing = asset.array(primitive['targets'][blink]['POSITION']).astype(np.float64)
-        base += amount * closing
-        for index in (blink, wink):
-            target = primitive['targets'][index]['POSITION']
-            asset.set(target, (asset.array(target) * (1 - amount)).astype(np.float32))
-        for name in ('Iride viola', 'Riflesso occhi'):
-            part = next(p for p in mesh['primitives'] if doc['materials'][p['material']]['name'] == name)
-            if part['attributes']['POSITION'] != accessor:
-                raise ValueError('Eye parts must share the face vertex buffer')
-            used = np.unique(asset.array(part['indices']))
-            for side in (-1, 1):
-                eye = used[np.sign(base[used, 0]) == side]
-                centre = base[eye].mean(0)
-                base[eye, :2] = centre[:2] + (base[eye, :2] - centre[:2]) * iris
-        asset.set(accessor, base.astype(np.float32))
-        entry = doc['accessors'][accessor]
-        entry['min'], entry['max'] = base.astype(np.float32).min(0).tolist(), base.astype(np.float32).max(0).tolist()
-
-
-def thin_brows(asset, scale=.62, lower=.0022):
-    """Thinner eyebrows, a little closer to the eyes."""
-    doc = asset.d
-    mesh, part = primitive_of(doc, 'Sopracciglia')
-    accessor = part['attributes']['POSITION']
-    points = asset.array(accessor).astype(np.float64)
-    used = np.unique(asset.array(part['indices']))
-    for side in (-1, 1):
-        brow = used[np.sign(points[used, 0]) == side]
-        middle = (points[brow, 1].min() + points[brow, 1].max()) / 2
-        points[brow, 1] = middle + (points[brow, 1] - middle) * scale - lower
-    asset.set(accessor, points.astype(np.float32))
-    entry = doc['accessors'][accessor]
-    entry['min'], entry['max'] = points.astype(np.float32).min(0).tolist(), points.astype(np.float32).max(0).tolist()
-
-
 def drop_head_details(asset):
     """Remove the provisional outfit's dark ornaments at the temples."""
     doc = asset.d
@@ -359,27 +245,6 @@ def drop_head_details(asset):
     keep = (points[triangles][:, :, 1] < 1.56).any(1)
     part['indices'] = append(asset, triangles[keep].reshape(-1, 1), 'SCALAR', USHORT, target=34963)
     return int((~keep).sum())
-
-
-def eye_opening(asset):
-    """Boundary points of each eye opening in the face skin, by side."""
-    doc = asset.d
-    _, part = primitive_of(doc, 'Viso')
-    points = asset.array(part['attributes']['POSITION']).astype(np.float64)
-    triangles = asset.array(part['indices']).reshape(-1, 3).astype(int)
-    _, weld = np.unique(np.round(points, 5), axis=0, return_inverse=True)
-    weld = weld.reshape(-1)
-    welded = np.zeros((weld.max() + 1, 3))
-    welded[weld] = points
-    corners = weld[triangles]
-    edges = np.sort(np.concatenate([corners[:, [0, 1]], corners[:, [1, 2]], corners[:, [2, 0]]]), axis=1)
-    edges, uses = np.unique(edges, axis=0, return_counts=True)
-    border = welded[np.unique(edges[uses == 1])]
-
-    def side(sign):
-        x = sign * border[:, 0]
-        return border[(x > .005) & (x < .075) & (border[:, 1] > 1.57) & (border[:, 1] < 1.64) & (border[:, 2] < -.03)]
-    return side
 
 
 def build(source, target):
@@ -395,11 +260,7 @@ def build(source, target):
     clip['translation'] = [offset[0], offset[1], offset[2] + CLIP_BACK]
     locks = add_locks(asset)
     add_scrunchie(asset)
-    paint_face(asset)
-    half_lids(asset)
-    thin_brows(asset)
     removed = drop_head_details(asset)
-    eye_vertices = draw_eyes(asset, eye_opening(asset))
     compact(asset)
     doc['asset']['generator'] = GENERATOR
     asset.write(target)

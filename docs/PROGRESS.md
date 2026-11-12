@@ -1,3 +1,52 @@
+# Checkpoint — 12 November 2026, revision 14: the face rebuilt (branch `nelielclaude`)
+
+The user asked for the face to be redone against the reference sheet, then
+found the first result "un po' troppo tondo" and asked for more detail.
+`tools/refine_face.py` is the new last stage (r13 -> r14); revisions 12 and
+13 no longer touch the eyes or the face texture.
+
+- Measurements: taken on the frontal "Neutrale" head and the eye close-up of
+  the private sheet, in units of H (eye line to chin). Only the numbers are
+  in the repository; the crops stayed in the session scratch folder.
+- Proportions (space map): nose at 0.31 H and mouth at 0.60 H below the eye
+  line (were 0.36 and 0.68), cheeks and jaw wider toward a small chin. The
+  outline is the reference profile blended 60/40 with the old narrower one,
+  because the pure reference profile looked too round on the 3D head.
+- Skin mesh (`face_mesh.py`): eye openings closed with a lid surface, one
+  Loop subdivision (1,396 -> 5,584 triangles) with the four morph targets
+  carried through the same operator, normals blended 80% toward an ellipsoid
+  for clean cel shading. Blink and wink no longer move the skin; smile and
+  surprise leave the eye area still.
+- Skin texture (`face_paint.py`): repainted from scratch at 2048 px from the
+  rest position of each texel: tan base, contour shade, cheeks, nose light
+  and nostrils, lips with a parting line, lid shade and crease. Ears keep
+  the stock shading, re-toned. `baseColorFactor` is now 1.
+- Eyes and brows (`face_eyes.py`): the stock eye and brow parts are removed.
+  New textured layers just in front of the skin: eyeball (iris, pupil,
+  catchlights), upper lash band with wing, clumps and lid shadow, lower lash
+  line, brows. Opening 39.6 x 13.3 mm, tilt 11 degrees, iris 18 mm. Each
+  expression rebuilds the layers from the same lid curves; the eyeball grid
+  has rows on those curves, so the lids cut it cleanly.
+- `tools/draw_eyes.py` (revision 13) is deleted.
+Labels: Revisione 14 / 0.9.0 EXP. File 5.22 MB.
+
+Checks: full rebuild from the base is byte-identical to the reviewed file;
+16 tests pass; zero glTF errors/warnings. Inspected: front, both
+three-quarter views and profile with and without hair; smile, surprised,
+blink, wink and a half blink; the real studio page at phone size (portrait
+front, both three-quarters, full figure).
+Not inspected: Costume studio, contours, poses, real phone.
+
+Known limits:
+- The eyes are layers on the surface, not recessed eyeballs.
+- Hair is unchanged and now the weakest part: the fringe hides the brows and
+  part of the eyes, a skin patch shows at the right temple, side locks bend
+  slightly where the cheeks got wider. No braid yet.
+- The 'surprised' mouth is the stock shape; the painted lips stretch with it.
+- The stock eye textures are still embedded (unused); the two new eye
+  sheets are not power-of-two.
+- Neck: no painted shadow under the chin.
+
 # Update — 12 November 2026, revision 13 eyes
 
 The user rejected reshaping the stock eyes ("vanno ridisegnati, forma
