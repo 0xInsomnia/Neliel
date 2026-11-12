@@ -25,6 +25,7 @@ EYE_FLATTEN = .18          # vertical compression of the eye opening
 EYE_TILT = .0035           # outer corner up, inner corner down (metres)
 FACE_TOP, CHIN_Y = 1.600, 1.503
 FACE_SQUASH = .12          # lower face shortened, the chin moves up
+CHIN_WIDEN, CHIN_FLATTEN = .20, .004   # softer chin tip
 
 
 def warp(points, head_bound):
@@ -62,6 +63,11 @@ def warp(points, head_bound):
     # up toward the eye line; the neck below takes up the difference.
     lift = FACE_SQUASH * (FACE_TOP - np.clip(y, CHIN_Y, FACE_TOP))
     q[:, 1] += lift * smooth(CHIN_Y - .045, CHIN_Y, y)
+
+    # Softer chin: the tip is a little wider and flatter, the jaw is untouched.
+    chin_front = 1 - smooth(-.045, -.025, z)
+    q[:, 0] += x * CHIN_WIDEN * gauss(y, CHIN_Y + .010, .013) * (1 - smooth(.035, .065, ax)) * chin_front
+    q[:, 1] += CHIN_FLATTEN * gauss(ax, 0, .018) * gauss(y, CHIN_Y, .010) * chin_front
     return q
 
 
