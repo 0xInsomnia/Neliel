@@ -9,6 +9,8 @@ Input must be r12. Targets are the user's character sheet.
   style as the existing side locks and added to that mesh.
 - Face texture: fuller coloured lips, a soft shadow under the nose and a
   darker upper eyelid.
+- Upper eyelids lowered by baking a third of the blink into the rest shape;
+  irises 10% smaller.
 - The triangle clip sits on the fringe instead of floating in front of it.
 
 Usage: python3 tools/refine_face_hair.py r12.glb r13.glb
@@ -289,6 +291,42 @@ def paint_face(asset):
     image['mimeType'] = 'image/jpeg'
 
 
+def half_lids(asset, amount=.32, iris=.90):
+    """Lowered upper lids with round irises, as in the reference close-ups.
+
+    Part of the blink morph is baked into the rest shape; blink and wink keep
+    closing the eye fully. The irises become slightly smaller.
+    """
+    doc = asset.d
+    mesh = next(m for m in doc['meshes'] if m['name'] == 'Viso')
+    names = mesh['extras']['targetNames']
+    blink, wink = names.index('blink'), names.index('wink')
+    done = set()
+    for primitive in mesh['primitives']:
+        accessor = primitive['attributes']['POSITION']
+        if accessor in done:
+            continue
+        done.add(accessor)
+        base = asset.array(accessor).astype(np.float64)
+        closing = asset.array(primitive['targets'][blink]['POSITION']).astype(np.float64)
+        base += amount * closing
+        for index in (blink, wink):
+            target = primitive['targets'][index]['POSITION']
+            asset.set(target, (asset.array(target) * (1 - amount)).astype(np.float32))
+        for name in ('Iride viola', 'Riflesso occhi'):
+            part = next(p for p in mesh['primitives'] if doc['materials'][p['material']]['name'] == name)
+            if part['attributes']['POSITION'] != accessor:
+                raise ValueError('Eye parts must share the face vertex buffer')
+            used = np.unique(asset.array(part['indices']))
+            for side in (-1, 1):
+                eye = used[np.sign(base[used, 0]) == side]
+                centre = base[eye].mean(0)
+                base[eye, :2] = centre[:2] + (base[eye, :2] - centre[:2]) * iris
+        asset.set(accessor, base.astype(np.float32))
+        entry = doc['accessors'][accessor]
+        entry['min'], entry['max'] = base.astype(np.float32).min(0).tolist(), base.astype(np.float32).max(0).tolist()
+
+
 def build(source, target):
     if Path(source).resolve() == Path(target).resolve():
         raise ValueError('Preserve the source revision')
@@ -303,6 +341,7 @@ def build(source, target):
     locks = add_locks(asset)
     add_scrunchie(asset)
     paint_face(asset)
+    half_lids(asset)
     compact(asset)
     doc['asset']['generator'] = GENERATOR
     asset.write(target)
