@@ -1,3 +1,50 @@
+# Checkpoint — 13 November 2026: body rebuilt on the technical sheet
+
+The user supplied a new reference, "Scheda Tecnica Modello 3D" (front, side
+and rear views at one scale, measurements, palette, details), and said to
+use it as the reference from now on. It is private and not in the
+repository; `tools/refine_physique.py` keeps only numbers read from it.
+
+How it was read: body runs extracted row by row from the three views (skin
+and dark pixels), front and rear agreeing within 1 px. Scale: sheet chin
+and ankle on the model's, 3.601 mm per sheet pixel. The sheet's figure
+stands on tiptoe, so heights are matched from the ankle up and the model
+stays flat-footed. The written circumferences (94/60/95 cm) do not agree
+with the drawing at any single scale; the drawing was followed.
+
+`refine_physique.py` was rewritten as "measure the model, move it onto the
+tables" (r14 -> r15), seven fitting passes plus fresh skin normals:
+- heights: knee 6 cm lower (thigh 26% longer, shin 13% shorter), crotch
+  0.931 m, waist 1.230, bust 1.354; shoulders 21 mm wider (joint 136 mm,
+  undoing revision 11);
+- front outline: waist 86 mm half-width, hips 191 mm at the top of the
+  thighs, thighs touching from the crotch to 0.76 m, knee 104 mm wide,
+  calf 128, ankle 61, knees 2 cm apart, ankles 6 cm;
+- leg depth 223 mm at the upper thigh, 133 at the knee, 144 at the calf;
+- rear up to 50 mm behind the thigh at 0.97 m, joined to the lower back;
+- bust 54 mm ahead of the waist line at 1.34-1.37 m (it was 69: the sheet's
+  projects less but sits on a fuller ribcage slope).
+Result against every table: within 1 mm (printed by the stage). Finding
+worth keeping: from waist to hips the r14 body was already within a few mm
+of this sheet; the earlier revision 15 attempts had moved away from it.
+Studio: the refined model no longer gets a thigh spread or lean (the rest
+pose is the sheet's front view); arms hang 4.5 degrees wider so the hands
+clear the wider hips.
+
+Checks: 16 tests pass; zero glTF errors/warnings; rebuilt from the base.
+Inspected: the model's outline over the sheet's front view, the two side
+views next to each other, four views in Costume studio and dressed, the
+leg junction close up, the studio page at phone size.
+Not inspected: wave and the other poses, contours, real phone.
+
+Differences from the sheet that are NOT applied (waiting for the user):
+pale pink skin (#F9C9D6) instead of tan; human ears instead of pointed;
+loose long wavy hair with thin red braids and a red X clip instead of the
+ponytail, scrunchie and triangle clip; tattoos on the right thigh (front)
+and upper arm; a longer lower face; hands about 10% longer; choker,
+cuffs, earrings; micro bikini as modelling outfit. Trunk depth above the
+hips could not be read (hidden by arm and hair) and is the model's own.
+
 # Correction — 13 November 2026: rear profile, thigh gap, standing posture
 
 The user: the pelvis in profile "sembra appuntito in giù", and asked to fix

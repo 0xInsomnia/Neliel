@@ -2,8 +2,8 @@ import { Color, Group, MathUtils, SRGBColorSpace, TextureLoader } from '../vendo
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 
 const poses = [
-  { name: 'Neutra', chest: 0, head: .025, left: 1.33, right: -1.36, leftElbow: .04, rightElbow: -.04 },
-  { name: 'Curiosa', chest: -.045, head: -.11, left: 1.29, right: -1.46, leftElbow: .11, rightElbow: .10 },
+  { name: 'Neutra', chest: 0, head: .025, left: 1.25, right: -1.28, leftElbow: .04, rightElbow: -.04 },
+  { name: 'Curiosa', chest: -.045, head: -.11, left: 1.23, right: -1.38, leftElbow: .11, rightElbow: .10 },
   { name: 'Dinamica', chest: .035, head: .09, left: 1.13, right: -1.16, leftElbow: .17, rightElbow: -.18 },
 ];
 const expressions = [
