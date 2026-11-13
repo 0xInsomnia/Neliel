@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#120d22">
+<meta name="description" content="Neliel: archivio interattivo di tutte le mesh 3D salvate e confronto delle proporzioni.">
+<title>Neliel • Model History</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#100c19;color:#f7f0ff;font-size:14px}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(ellipse at 50% -10%,#33204e 0,#140e22 44%,#0e0b17 100%);min-height:100svh}
+header{padding:20px max(16px,calc((100vw - 1280px)/2));border-bottom:1px solid #ffffff1c;display:flex;align-items:center;justify-content:space-between;gap:12px}
+header h1{font-size:22px;letter-spacing:-.6px;margin:0;font-weight:730}header h1 span{color:#c69bff}header p{margin:5px 0 0;color:#b9a6ca;font-size:12px}
+.pill{font-size:11px;background:#7a4cad33;border:1px solid #b18df64d;color:#dcc6ff;border-radius:50px;padding:7px 11px;white-space:nowrap}
+main{max-width:1280px;margin:auto;padding:18px 16px 32px}
+.topbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:14px}
+button,input,select{font:inherit;color:inherit}button{border:1px solid #ffffff36;border-radius:11px;background:#2e2544;padding:9px 12px;cursor:pointer;font-weight:580}
+button:hover{border-color:#c0a0ff}button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid #d1b1ff;outline-offset:2px}button.on{background:#a77de4;color:#140f20;border-color:#a77de4}
+button:disabled{opacity:.55;cursor:wait}
+.help{font-size:12px;color:#bfb0d0;margin:2px 0 12px}
+.view-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.view-grid.single{grid-template-columns:1fr}.view-grid.single .viewer:nth-child(2){display:none}
+.viewer{border:1px solid #ffffff21;border-radius:17px;background:linear-gradient(150deg,#2a1d3c,#120f21 70%);min-width:0;overflow:hidden;position:relative;box-shadow:0 12px 38px #05030a40}
+.viewer-top{padding:13px;display:flex;align-items:center;gap:10px;min-height:65px}
+.letter{height:32px;width:32px;background:#d1adfa;color:#1d112c;display:grid;place-items:center;font-weight:800;border-radius:10px;flex-shrink:0}
+.viewer:nth-child(2) .letter{background:#85dccf;color:#102a29}
+.info{min-width:0;flex:1}.info small{display:block;color:#a895c1;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:4px}
+select{width:100%;max-width:100%;border:1px solid #ffffff3b;background:#1c152d;border-radius:8px;padding:9px 28px 9px 10px;min-width:0}
+.canvas-wrap{position:relative;height:clamp(320px,55vw,570px);overflow:hidden}
+.canvas-wrap canvas{display:block;width:100%;height:100%;touch-action:none;outline:none}
+.loading{position:absolute;inset:0;display:grid;place-items:center;background:#130d20b8;font-weight:600;padding:16px;text-align:center;pointer-events:none;transition:opacity .2s}
+.loading.hidden{opacity:0;visibility:hidden}.load-error{color:#ffadaf;pointer-events:auto}
+.corner{position:absolute;bottom:14px;left:15px;background:#161122b8;padding:7px 10px;border:1px solid #ffffff24;border-radius:7px;font-size:11px;color:#d8cbe5;pointer-events:none}
+.viewer-footer{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:12px 14px;border-top:1px solid #ffffff18;color:#b7a8c7;font-size:11px;min-height:42px}
+.viewer-footer a{color:#d6b8ff;text-decoration:none}
+.controls{margin:14px 0;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.controls .tag{font-size:12px;color:#b2a4bf;margin-right:3px}.spacer{flex:1}
+.note{border:1px solid #ffffff1b;border-radius:13px;background:#21172f99;padding:14px 16px;margin-top:12px}
+.note strong{color:#e6d1ff}.note p{margin:7px 0;color:#c3b5d3;line-height:1.55;font-size:12px}
+.status{display:flex;gap:8px;align-items:center;margin:14px 0;color:#c8b8d7;font-size:12px;min-height:20px}
+.dot{width:7px;height:7px;border-radius:50%;background:#93dbc5;display:inline-block}
+.extra{display:flex;gap:7px;flex-wrap:wrap;margin:12px 0}.extra input{background:#21172f;border:1px solid #ffffff36;border-radius:9px;min-width:190px;flex:1;padding:10px}
+a{color:#d4b3ff}
+@media(max-width:650px){
+ header{padding:15px}header h1{font-size:20px}
+ main{padding:12px}
+ .view-grid{gap:6px}
+ .viewer{border-radius:11px}
+ .viewer-top{padding:8px;display:block}
+ .letter{display:none}
+ .info small{font-size:10px;margin-bottom:6px}
+ select{font-size:11px;padding:8px 4px;height:38px}
+ .canvas-wrap{height:clamp(285px,74vw,440px)}
+ .viewer-footer{font-size:10px;display:block;padding:7px 9px;min-height:50px}
+ .viewer-footer span,.viewer-footer a{display:block;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+ .corner{bottom:8px;left:7px;font-size:9px;padding:4px 6px}
+ button{padding:9px;font-size:12px}
+ .controls{gap:6px}
+}
+</style>
+</head>
+<body>
+<header><div><h1>NELIEL <span>/ Model History</span></h1><p>Le revisioni vere, affiancate. Nessun modello viene modificato.</p></div><span class="pill">3D • GitHub</span></header>
+<main>
+<div class="topbar"><button id="compare" class="on" aria-pressed="true">A / B • Confronto</button><button id="refresh">↻ Aggiorna versioni</button><span class="spacer"></span><a href="https://github.com/0xInsomnia/Neliel" target="_blank" rel="noopener">Repository GitHub</a></div>
+<div class="help">Trascina per ruotare entrambe le viste · Pizzica per zoomare · I modelli mantengono le proprie proporzioni.</div>
+<div class="view-grid" id="grid">
+<section class="viewer" aria-label="Modello A">
+ <div class="viewer-top"><div class="letter">A</div><div class="info"><small>MODELLO A • REVISIONE DI PARTENZA</small><select id="sel-a" aria-label="Scegli revisione modello A"></select></div></div>
+ <div class="canvas-wrap" id="area-a"><div class="loading" id="loading-a">Caricamento modello A…</div><div class="corner">A • <span id="tag-a">—</span></div></div>
+ <div class="viewer-footer"><span id="meta-a">Pronto</span><a id="link-a" href="#" target="_blank" rel="noopener">Vedi commit</a></div>
+</section>
+<section class="viewer" aria-label="Modello B">
+ <div class="viewer-top"><div class="letter">B</div><div class="info"><small>MODELLO B • REVISIONE DA CONFRONTARE</small><select id="sel-b" aria-label="Scegli revisione modello B"></select></div></div>
+ <div class="canvas-wrap" id="area-b"><div class="loading" id="loading-b">Caricamento modello B…</div><div class="corner">B • <span id="tag-b">—</span></div></div>
+ <div class="viewer-footer"><span id="meta-b">Pronto</span><a id="link-b" href="#" target="_blank" rel="noopener">Vedi commit</a></div>
+</section>
+</div>
+<div class="controls">
+<span class="tag">VISTA</span><button class="on" data-view="front">Frontale</button><button data-view="side">Profilo</button><button data-view="back">Posteriore</button><button data-view="three">¾</button>
+<span class="spacer"></span><button id="portrait">Viso</button><button id="body" class="on">Corpo intero</button><button id="zoomout">−</button><button id="zoomin">+</button><button id="reset">Reset</button>
+</div>
+<div id="status" class="status" role="status"><span class="dot"></span><span id="status-text">Carico la cronologia delle versioni…</span></div>
+<div class="note"><strong>Come funziona l'archivio</strong>
+<p>Le revisioni 05, 06, 15 e 16b sono identificate con commit verificati. La pagina cerca inoltre <strong>tutti i checkpoint della mesh</strong> presenti nei branch pubblici di Neliel e li aggiunge ai menu, anche in futuro. I commit intermedi possono avere nomi descrittivi invece di un numero di revisione: non viene inventata una numerazione. Selezionando una versione viene sempre caricata la mesh salvata in quel preciso commit, non il file corrente di un altro branch.</p>
+<p>Il confronto applica lo stesso rendering cel-shaded a entrambe le mesh. Serve per valutare sagoma, viso e proporzioni; le animazioni non sono incluse in questa galleria. I controlli geometrici non sostituiscono il confronto con i disegni originali.</p></div>
+<div class="extra"><input id="custom-ref" aria-label="Branch o commit da aggiungere" placeholder="Aggiungi un branch o SHA GitHub" autocomplete="off"><button id="add">Aggiungi modello</button></div>
+<p class="help">Le versioni nuove nei branch GitHub vengono trovate con “Aggiorna versioni”. Puoi anche inserire un nuovo branch o commit senza cambiare il codice. Le scelte A/B sono ricordate su questo dispositivo.</p>
+</main>
+<script type="module">
+import * as THREE from '../vendor/three/three.module.min.js';
+import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
+import { applyAnimeMaterials } from '../src/materials.js';
+
+const REPO = '0xInsomnia/Neliel';
+const FILE = 'assets/neliel-refined.glb';
+const API = 'https://api.github.com/repos/' + REPO;
+const RAW = 'https://raw.githubusercontent.com/' + REPO + '/';
+const FIRST_DATE = new Date('2026-11-09T13:30:00Z').getTime();
+const pinned = [
+  {sha:'b4a1035b5af7b1d6dcb6bfc6ddf53a94ef853e79',label:'R05 • viso',date:'2026-11-09T13:31:50Z',branch:'main',message:'Primo viso adulto'},
+  {sha:'bdd92c308d29391e667353dbeb2b25a62c1f6036',label:'R06 • testa',date:'2026-11-09T18:25:15Z',branch:'main',message:'Modello recuperato e validato'},
+  {sha:'ff4c9a55d3d532a78c2a232a5f36c6c0ab79ff96',label:'R15 • silhouette',date:'2026-11-13T18:00:00Z',branch:'nelielclaude',message:'Corpo sulla scheda tecnica'},
+  {sha:'a4aaf2c8f1b5b5e6dfd37616198c7ecffe32d046',label:'R16b • corpo',date:'2026-11-14T00:00:00Z',branch:'model/reference-r16',message:'Checkpoint proporzioni, non ancora approvato'}
+];
+const $ = id => document.getElementById(id);
+const versions = new Map(pinned.map(v=>[v.sha,{...v}]));
+const get = (key,fallback) => { try{return localStorage.getItem(key)||fallback;}catch{return fallback;} };
+const save = (key,value) => { try{localStorage.setItem(key,value);}catch{} };
+let selection = {a:get('neliel-gallery-a',pinned[2].sha),b:get('neliel-gallery-b',pinned[3].sha)};
+const loader = new GLTFLoader();
+let cameraState = {azimuth:.10,elevation:.035,zoom:1,mode:'body'};
+let outlines = false;
+
+function report(message){$('status-text').textContent=message;}
+function titleOf(v){
+ if(v.label) return v.label;
+ const msg=(v.message||'').split('\n')[0].trim();
+ const tagged=msg.match(/\b(?:revisione|revision|rev|r)[\s.#:-]*(\d{1,2}[a-z]?)\b/i);
+ return tagged ? 'R'+tagged[1].toUpperCase()+' • '+v.sha.slice(0,7) : 'Checkpoint '+v.sha.slice(0,7);
+}
+function sorted(){return [...versions.values()].sort((a,b)=>new Date(a.date||0)-new Date(b.date||0)||a.sha.localeCompare(b.sha));}
+function listOptions(){
+ for(const key of ['a','b']){
+   const el=$('sel-'+key); const chosen=selection[key]; el.replaceChildren();
+   for(const v of sorted()){
+     const opt=document.createElement('option');
+     opt.value=v.sha;
+     opt.textContent=titleOf(v)+' — '+(v.message||v.branch||'modello').split('\n')[0].slice(0,55);
+     el.appendChild(opt);
+   }
+   if(versions.has(chosen)) el.value=chosen;
+   else {selection[key]=pinned[key==='a'?2:3].sha;el.value=selection[key];}
+ }
+}
+async function apiJSON(url){
+ const response=await fetch(url,{headers:{'Accept':'application/vnd.github+json'}});
+ if(!response.ok)throw new Error('GitHub '+response.status);
+ return response.json();
+}
+async function discover(){
+ $('refresh').disabled=true;
+ let count=0;let partial=false;
+ try{
+   const data=await apiJSON(API+'/branches?per_page=100');
+   const branchNames=[...new Set(['main','nelielclaude','model/reference-r16',...data.map(v=>v.name)])];
+   const results=await Promise.allSettled(branchNames.map(async branch=>{
+     const u=API+'/commits?sha='+encodeURIComponent(branch)+'&path='+encodeURIComponent(FILE)+'&per_page=100';
+     const commits=await apiJSON(u);
+     return {branch,commits};
+   }));
+   for(const result of results){
+     if(result.status!=='fulfilled'){partial=true;continue;}
+     const {branch,commits}=result.value;
+     for(const c of commits){
+       const sha=c.sha;
+       if(!sha || new Date(c.commit?.committer?.date||0).getTime()<FIRST_DATE)continue;
+       if(versions.has(sha))continue;
+       versions.set(sha,{sha,branch,date:c.commit?.committer?.date||'',message:c.commit?.message||'Salvataggio modello'});
+       count++;
+     }
+   }
+   report((sorted().length)+' modelli/checkpoint disponibili'+(count?' · '+count+' nuovi trovati':'')+(partial?' · alcune cronologie non raggiungibili':'')+'.');
+ }catch(error){
+   report('Versioni principali disponibili. Archivio GitHub temporaneamente non raggiungibile ('+error.message+').');
+ }
+ listOptions();$('refresh').disabled=false;
+}
+
+function viewer(side){
+ const area=$('area-'+side);
+ const scene=new THREE.Scene();
+ scene.background=new THREE.Color(0x1c142c);
+ scene.fog=new THREE.Fog(0x1c142c,7,15);
+ scene.add(new THREE.HemisphereLight(0xfff0ff,0x625277,1.2));
+ const key=new THREE.DirectionalLight(0xffeadc,2.2);key.position.set(2.8,4.5,5);scene.add(key);
+ const rim=new THREE.DirectionalLight(0x9e81ff,.8);rim.position.set(-3,3,-2);scene.add(rim);
+ const floor=new THREE.Mesh(new THREE.CylinderGeometry(.76,.78,.024,64),new THREE.MeshStandardMaterial({color:0x3b2754,roughness:.8,metalness:.13}));
+ floor.position.y=-.022;scene.add(floor);
+ const grid=new THREE.GridHelper(8,32,0x74549a,0x3a2b52);grid.position.y=-.043;scene.add(grid);
+ const camera=new THREE.PerspectiveCamera(37,1,.03,70);
+ const renderer=new THREE.WebGLRenderer({antialias:true,alpha:false,powerPreference:'high-performance'});
+ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,1.7));
+ renderer.toneMapping=THREE.ACESFilmicToneMapping;
+ renderer.toneMappingExposure=1;
+ renderer.domElement.tabIndex=0;
+ renderer.domElement.setAttribute('aria-label','Ruota il modello '+side.toUpperCase()+' trascinando');
+ area.prepend(renderer.domElement);
+ let lastW=0,lastH=0;
+ const resize=()=>{
+   const w=area.clientWidth,h=area.clientHeight;
+   if(w&&h&&(lastW!==w||lastH!==h)){
+     lastW=w;lastH=h;renderer.setSize(w,h,false);
+     camera.aspect=w/h;camera.updateProjectionMatrix();
+   }
+ };
+ new ResizeObserver(resize).observe(area);
+ let model=null,controller=null,request=0;
+ function updateCam(){
+   const portrait=cameraState.mode==='face';
+   const span=portrait?.63:2.02;
+   const targetY=portrait?1.51:.90;
+   const fit=Math.min(1,camera.aspect/.62);
+   const d=span/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)))*cameraState.zoom/fit;
+   camera.position.set(d*Math.sin(cameraState.azimuth)*Math.cos(cameraState.elevation),
+     targetY+d*Math.sin(cameraState.elevation),d*Math.cos(cameraState.azimuth)*Math.cos(cameraState.elevation));
+   camera.lookAt(0,targetY,0);
+ }
+ function frame(){
+   if(!document.hidden){
+     resize();updateCam();
+     if(lastW&&lastH)renderer.render(scene,camera);
+   }
+ }
+ function free(){
+   if(!model)return;
+   scene.remove(model);
+   model.traverse(o=>{if(o.isMesh){
+     o.geometry?.dispose();
+     for(const m of (Array.isArray(o.material)?o.material:[o.material])){
+       if(!m)continue;
+       m.map?.dispose();m.gradientMap?.dispose();m.dispose();
+     }
+   }});
+   model=null;controller=null;
+ }
+ async function load(sha){
+   const token=++request;
+   const v=versions.get(sha);if(!v)return;
+   const loading=$('loading-'+side);
+   loading.classList.remove('hidden','load-error');
+   loading.textContent='Caricamento '+titleOf(v)+'…';
+   $('tag-'+side).textContent=titleOf(v);
+   $('meta-'+side).textContent=v.branch||'GitHub';
+   $('link-'+side).href='https://github.com/'+REPO+'/commit/'+sha;
+   try{
+     const gltf=await loader.loadAsync(RAW+encodeURIComponent(sha)+'/'+FILE);
+     if(token!==request)return;
+     free();
+     const root=new THREE.Group();
+     const avatar=gltf.scene;
+     avatar.rotation.y=Math.PI;
+     root.add(avatar);
+     avatar.updateMatrixWorld(true);
+     // Natural scale: no body/head proportion changes are introduced by the gallery.
+     // Move feet to the floor without rescaling the model.
+     const bounds=new THREE.Box3().setFromObject(avatar);
+     root.position.y=-bounds.min.y;
+     controller=applyAnimeMaterials(avatar);
+     controller.setOutlines(outlines);
+     avatar.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
+     scene.add(root);model=root;
+     const generator=gltf.parser?.json?.asset?.generator||'';
+     const found=generator.match(/(?:revision|revisione|reference model|physique|proportions|figure|body reference|body)\s*(\d{1,2}[a-z]?)/i);
+     const rev=found?' · mesh r'+found[1]:'';
+     $('meta-'+side).textContent=(v.branch||'GitHub')+rev;
+     loading.classList.add('hidden');
+   }catch(error){
+     if(token!==request)return;
+     loading.classList.add('load-error');
+     loading.textContent='Caricamento fallito. Controlla connessione o prova un’altra versione.';
+     $('meta-'+side).textContent=error.message||'Errore GLB';
+   }
+ }
+ const pointers=new Map();
+ const canvas=renderer.domElement;
+ canvas.style.touchAction='none';
+ function gap(){const list=[...pointers.values()];return Math.hypot(list[0].x-list[1].x,list[0].y-list[1].y);}
+ canvas.addEventListener('pointerdown',e=>{
+   if(e.button!==0&&e.pointerType==='mouse')return;
+   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   try{canvas.setPointerCapture(e.pointerId);}catch{}
+ });
+ canvas.addEventListener('pointermove',e=>{
+   if(!pointers.has(e.pointerId))return;
+   const old=pointers.size===2?gap():0;
+   const previous=pointers.get(e.pointerId),dx=e.clientX-previous.x,dy=e.clientY-previous.y;
+   pointers.set(e.pointerId,{x:e.clientX,y:e.clientY});
+   if(pointers.size===1){
+     cameraState.azimuth-=dx*.009;
+     cameraState.elevation=THREE.MathUtils.clamp(cameraState.elevation+dy*.006,-.38,.8);
+   }else if(old>9&&gap()>9){
+     cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*old/gap(),.4,3);
+   }
+ });
+ for(const event of ['pointerup','pointercancel','lostpointercapture'])canvas.addEventListener(event,e=>pointers.delete(e.pointerId));
+ canvas.addEventListener('wheel',e=>{
+   e.preventDefault();
+   cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*Math.exp(e.deltaY*.0015),.4,3);
+ },{passive:false});
+ canvas.addEventListener('keydown',e=>{
+   if(e.key==='ArrowLeft')cameraState.azimuth+=.15;
+   else if(e.key==='ArrowRight')cameraState.azimuth-=.15;
+   else if(e.key==='+')cameraState.zoom*=.88;
+   else if(e.key==='-')cameraState.zoom*=1.14;
+   else return;
+   e.preventDefault();
+ });
+ return {frame,load,outlines:value=>controller?.setOutlines(value)};
+}
+let va,vb;
+try{
+ va=viewer('a');vb=viewer('b');
+ function loop(){va.frame();vb.frame();requestAnimationFrame(loop);}
+ requestAnimationFrame(loop);
+}catch(error){report('WebGL non disponibile: '+error.message);}
+
+function choose(side,sha){
+ if(!versions.has(sha))return;
+ selection[side]=sha;
+ save('neliel-gallery-'+side,sha);
+ if(side==='a')va?.load(sha);
+ else vb?.load(sha);
+}
+$('sel-a').addEventListener('change',e=>choose('a',e.target.value));
+$('sel-b').addEventListener('change',e=>choose('b',e.target.value));
+$('compare').onclick=()=>{
+ const single=$('grid').classList.toggle('single');
+ $('compare').classList.toggle('on',!single);
+ $('compare').setAttribute('aria-pressed',String(!single));
+ $('compare').textContent=single?'Mostra confronto A / B':'A / B • Confronto';
+};
+function markView(view){
+ document.querySelectorAll('[data-view]').forEach(b=>b.classList.toggle('on',b.dataset.view===view));
+}
+document.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{
+ const a={front:0,side:Math.PI/2,back:Math.PI,three:Math.PI/4};
+ cameraState.azimuth=a[b.dataset.view];cameraState.elevation=.035;
+ markView(b.dataset.view);
+}));
+function focus(mode){
+ cameraState.mode=mode;
+ $('portrait').classList.toggle('on',mode==='face');
+ $('body').classList.toggle('on',mode==='body');
+}
+$('portrait').onclick=()=>focus('face');
+$('body').onclick=()=>focus('body');
+$('zoomin').onclick=()=>cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*.8,.4,3);
+$('zoomout').onclick=()=>cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*1.25,.4,3);
+$('reset').onclick=()=>{cameraState={azimuth:0,elevation:.035,zoom:1,mode:'body'};markView('front');focus('body');};
+$('refresh').onclick=discover;
+$('add').onclick=async()=>{
+ const input=$('custom-ref');
+ const ref=input.value.trim();
+ if(!/^[a-zA-Z0-9_./-]{2,120}$/.test(ref)||ref.includes('..')){report('Inserisci il nome di un branch o un commit SHA valido.');return;}
+ $('add').disabled=true;
+ try{
+   const c=await apiJSON(API+'/commits/'+encodeURIComponent(ref));
+   const v={sha:c.sha,date:c.commit?.committer?.date||'',branch:ref,message:c.commit?.message||'Modello aggiunto'};
+   versions.set(v.sha,v);listOptions();
+   $('sel-b').value=v.sha;choose('b',v.sha);
+   report('Modello '+v.sha.slice(0,8)+' aggiunto al confronto.');
+   input.value='';
+ }catch(e){report('Non riesco ad aggiungere questo riferimento: '+e.message);}
+ finally{$('add').disabled=false;}
+};
+listOptions();
+choose('a',selection.a);choose('b',selection.b);
+discover();
+</script>
+</body>
+</html>
