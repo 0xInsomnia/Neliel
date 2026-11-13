@@ -1,3 +1,19 @@
+# Checkpoint — 14 November 2026: body proportions r16b
+
+Branch model/reference-r16. User requested body proportions first.
+New body-only stage tools/refine_body_reference.py starts from r15; the
+previous experimental hair/outfit scripts are NOT applied.
+Measured horizontal convex-hull sections: waist 49.10 -> 59.97 cm,
+hips 108.90 -> 95.19 cm; bust 84.84 -> 96.27 cm (target 94, tuning pending).
+Anatomical crown target 1.73 m, chin 1.4993 m (7.5 heads, excluding hair).
+Shortened abdomen and moved knee/hip/neck pivots using the same map as
+mesh and four facial morph endpoints. Garment geometry follows the map.
+Initial npm test passed, both GLBs zero errors/warnings. Before render
+inspected; after front/profile/rear inspection is in progress. This is a
+recoverable geometry checkpoint, not final aesthetic approval.
+Next: finish visual check, remove studio head shrink for this revision,
+update rebuild pipeline and VRM export. Private images are not committed.
+
 # Checkpoint — 13 November 2026: body rebuilt on the technical sheet
 
 The user supplied a new reference, "Scheda Tecnica Modello 3D" (front, side
