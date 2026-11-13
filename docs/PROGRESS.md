@@ -1,3 +1,26 @@
+# Correction — 13 November 2026: rear profile, thigh gap, standing posture
+
+The user: the pelvis in profile "sembra appuntito in giù", and asked to fix
+the remaining limits of the body before moving on.
+- Cause of the pointed look: the earlier rear change was two overlapping
+  bumps (back and down) that left a peak at 1.03 m with a straight slope
+  below it. `round_rear` in `tools/refine_physique.py` replaces them: after
+  the main map it measures the rear profile and moves the surface front to
+  back onto a table read from the side figure (behind the back of the
+  thigh: +20 mm at 0.945 m, +41 at 0.975, +43 at 0.99, +37 at 1.03, +18 at
+  1.08), a round curve whose fullest point sits low, just above the fold.
+  Result: +32 mm at 0.96, +41 at 0.99, +37 at 1.03, +17 at 1.08.
+- Thigh gap: the inner thighs now meet from 0.88 m up (was 0.915); only a
+  hairline stays visible under the crotch in the studio stance.
+- Posture: the side figure stands with the pelvis tipped forward. The
+  refined model gets `lean: 0.07` (`loadAvatar` option): hips -0.07 rad
+  about x, spine +0.042, chest +0.028, feet +0.07 to stay flat.
+Checks: 16 tests pass; zero glTF errors/warnings; rebuilt from the base.
+Inspected: pelvis in profile and three-quarter rear next to the reference
+crop; four views in Costume studio and dressed; junction close up.
+Not inspected: poses and wave with the lean, contours, real phone.
+The VRM export carries the shape but not the studio's stance and lean.
+
 # Correction — 13 November 2026: revision 15 body, second rework
 
 The user: proportions still off, and a rectangular opening at the junction

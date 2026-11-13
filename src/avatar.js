@@ -13,7 +13,7 @@ const expressions = [
   { name: 'Occhiolino', weights: { wink: 1, smile: .58 } },
 ];
 
-export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08, studyMap = null, stance = .048 } = {}) {
+export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08, studyMap = null, stance = .048, lean = 0 } = {}) {
   const { scene } = await new GLTFLoader().loadAsync(url.href);
   const materialController = prepareMaterials(scene);
   const root = new Group();
@@ -33,11 +33,17 @@ export async function loadAvatar(url, reducedMotion, prepareMaterials = () => nu
     return [key, bone];
   }));
   bones.head.scale.set(.94, .96, .97);
+  // Standing posture of the reference side view: the pelvis tips forward and
+  // the spine arches back over it, so the legs slant behind the hips.
+  scene.getObjectByName('J_Bip_C_Hips').rotation.x = -lean;
+  scene.getObjectByName('J_Bip_C_Spine').rotation.x = lean * .6;
+  bones.chest.rotation.x = lean * .4;
   for (const [side, angle] of [['L', -stance], ['R', stance]]) {
     const thigh = scene.getObjectByName(`J_Bip_${side}_UpperLeg`);
     const foot = scene.getObjectByName(`J_Bip_${side}_Foot`);
     thigh.rotation.z = angle;
     foot.rotation.z = -angle;
+    foot.rotation.x = lean;
   }
   const tail = scene.getObjectByName('Coda');
   const hairBones = Array.from({ length: 4 }, (_, index) => scene.getObjectByName(`Ponytail_${index}`));

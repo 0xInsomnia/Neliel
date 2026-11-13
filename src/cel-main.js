@@ -124,6 +124,7 @@ try {
   avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, {
     widen: original ? 1.08 : 1,
     stance: original ? .048 : .02,
+    lean: original ? 0 : .07,
     studyMap: original ? null : new URL('../assets/body-study.png', import.meta.url),
   });
   scene.add(avatar.root);

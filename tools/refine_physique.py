@@ -17,7 +17,9 @@ space map moves meshes, garments, morphs and joints together:
   crotch down to the ankle: 157, 144, 120, 107, 97 (knee), 101, 115 (calf),
   107, 83, 63, 57; depths: 198, 169, 140, 127, 113, 124, 134, 122, 100, 77.
 - Bust, seen from the side: lifted and rounder instead of pear-shaped.
-- Rear, seen from the side: fuller and about 3 cm lower.
+- Rear, seen from the side: its profile is set from the side figure in a
+  second pass (`round_rear`): a round curve whose fullest point sits low,
+  about 4 cm behind the thigh, just above the fold.
 
 Usage: python3 tools/refine_physique.py r14.glb r15.glb
 """
@@ -44,8 +46,8 @@ LEGS = [(.00, 1.0, 1.0), (.06, 1.05, 1.0), (.14, 1.25, 1.10), (.188, 1.32, 1.13)
 PIVOT = .35                # 0 keeps the inner edge of the leg, 1 its centre line
 # Where the inner edge of the leg ends up, as a share of its old distance
 # from the midline. Next to nothing from the drawing's crotch upward closes the slot.
-INNER = [(.0, 1.0), (.5, 1.0), (.5965, .68), (.639, .55), (.70, .38), (.80, .22), (.86, .15),
-         (.915, .04), (1.5, .04)]      # not quite zero: the map must stay invertible
+INNER = [(.0, 1.0), (.5, 1.0), (.5965, .68), (.639, .55), (.70, .38), (.80, .22), (.85, .08),
+         (.88, .04), (1.5, .04)]       # not quite zero: the map must stay invertible
 # Heights: incoming -> outgoing. Longer legs, the knee lower on the leg.
 HEIGHTS = [(-1, -1), (.08, .08), (.613, .597), (.90, .928)]
 HEIGHT_IN = [k[0] for k in HEIGHTS] + [3.0]
@@ -53,7 +55,12 @@ HEIGHT_OUT = [k[1] for k in HEIGHTS] + [3.0 + HEIGHTS[-1][1] - HEIGHTS[-1][0]]
 RISE = HEIGHTS[-1][1] - HEIGHTS[-1][0]
 BUST = (.082, 1.31, -.13)  # centre of the region, right side
 BUST_LIFT, BUST_TOP, BUST_UNDER = .020, .010, .012
-REAR_BACK, REAR_DOWN = .020, .025   # the rear fuller and lower, as on the side figure
+# Rear profile on the finished figure: height, distance behind the back of
+# the thigh. Read on the side figure from the fold up to the jacket hem; the
+# part above, hidden there, keeps the model's own slope to the waist.
+REAR = [(.915, 0), (.93, -.002), (.945, .020), (.96, .034), (.975, .041), (.99, .043), (1.01, .041),
+        (1.03, .037), (1.055, .028), (1.08, .018), (1.11, -.004), (1.14, -.030), (1.17, -.055),
+        (1.20, -.075), (1.225, -.086)]
 RESOLUTION = 1000
 
 
@@ -153,11 +160,6 @@ def make_warp(shape):
         q[:, 2] -= BUST_TOP * np.exp(-((y - 1.375) / .030) ** 2 - (dx / .060) ** 2) * smooth(-.06, -.10, z) * body
         q[:, 2] += BUST_UNDER * forward * np.exp(-((y - 1.275) / .030) ** 2 - (dx / .070) ** 2) * body
 
-        # Rear: its fullest point sits lower and further back.
-        behind = (1 - smooth(.19, .23, ax)) * body
-        q[:, 2] += REAR_BACK * np.exp(-((y - 1.00) / .060) ** 2) * smooth(.0, .05, z) * behind
-        q[:, 1] -= REAR_DOWN * np.exp(-((y - 1.04) / .060) ** 2) * smooth(.02, .08, z) * behind
-
         # Heights. Whatever hangs from the head rises with it as one piece.
         q[:, 1] += np.where(head_bound, RISE, np.interp(y, HEIGHT_IN, HEIGHT_OUT) - y)
         return q
@@ -176,6 +178,41 @@ def report(shape, label, rise=0.0):
           f'calf {leg(.434) * 1e3:.0f}, ankle {leg(.18) * 1e3:.0f}')
 
 
+def rear_profile(asset):
+    """Rear-most z of the skin by height, within the trunk's width."""
+    doc = asset.d
+    part = next(p for mesh in doc['meshes'] for p in mesh['primitives']
+                if doc['materials'][p['material']]['name'] == SKIN)
+    points = asset.array(part['attributes']['POSITION']).astype(np.float64)
+    triangles = asset.array(part['indices']).reshape(-1, 3).astype(int)
+    bounds = (-.20, .20, .80, 1.30)
+    back = -frontal_depth(points * [1, 1, -1], triangles, bounds, RESOLUTION)
+    y = (np.arange(back.shape[0]) + .5) / RESOLUTION + bounds[2]
+    profile = np.where(np.isfinite(back), back, -np.inf).max(1)
+    return y, np.convolve(np.pad(profile, 4, mode='edge'), np.ones(9) / 9, mode='valid')
+
+
+def round_rear(asset):
+    """Move the rear surface to the reference profile, front to back only."""
+    y, profile = rear_profile(asset)
+    thigh = float(np.median(profile[(y > .865) & (y < .895)]))
+    wanted = thigh + np.interp(y, [k[0] for k in REAR], [k[1] for k in REAR])
+    inside = (y >= REAR[0][0]) & (y <= REAR[-1][0])
+    shift = np.where(inside, np.clip(wanted - profile, -.03, .04), 0)
+    shift = np.convolve(np.pad(shift, 5, mode='edge'), np.ones(11) / 11, mode='valid')
+
+    def warp(points, head_bound):
+        q = np.asarray(points, dtype=np.float64).copy()
+        x, height, z = q.T
+        reach = np.maximum(np.interp(height, y, profile), .03)
+        weight = smooth(.25, .85, z / reach) * (1 - smooth(.13, .19, np.abs(x))) * np.where(head_bound, 0.0, 1.0)
+        q[:, 2] += np.interp(height, y, shift) * weight
+        return q
+    apply_map(asset, warp)
+    after = rear_profile(asset)[1]
+    return thigh, [(h, float(np.interp(h, y, after)) - thigh) for h in (.93, .96, .99, 1.03, 1.08, 1.14)]
+
+
 def build(source, target):
     if Path(source).resolve() == Path(target).resolve():
         raise ValueError('Preserve the source revision')
@@ -186,6 +223,8 @@ def build(source, target):
     report(shape, 'Before')
     apply_map(asset, make_warp(shape))
     report(Silhouette(asset), 'After ', RISE)
+    thigh, rear = round_rear(asset)
+    print('Rear behind the thigh (mm):', ', '.join(f'{h:.2f} m: {v * 1e3:+.0f}' for h, v in rear))
     for node in asset.d['nodes']:              # rounding dust must not read as a transform
         if 'translation' in node:
             node['translation'] = [0.0 if abs(v) < 1e-12 else v for v in node['translation']]
