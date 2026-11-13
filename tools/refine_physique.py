@@ -1,18 +1,19 @@
 """Revision 15: body proportions from the reference turnaround.
 
 Input must be r14. Measured on the front and side figures of the private
-sheet, scaled to the model's height (crown to floor); only the numbers are
-kept here. Heights, shoulders and bust already matched within the reading
-error and are left alone. What changes, through one space map (meshes,
-garments, morphs and joints together):
+sheet and checked by drawing the model's outline over the front figure
+(chin and crotch aligned); only the numbers are kept here. Heights of chin,
+shoulders, bust and waist, the shoulder joints and the bust width already
+matched and are left alone. One space map moves meshes, garments, morphs
+and joints together:
 
-- Torso: a long narrow waist. Half-width 74 mm under the bust, 73 mm at the
-  waist, 82 mm at the navel, 108 mm at the top of the hips; the flare to the
-  full hip width (178 mm) happens lower, over the last 12 cm.
-- Legs: much fuller. One thigh is 161 mm wide a third of the way down and
-  119 mm three quarters down, the knee 95 mm, the calf 91 mm, the ankle
-  56 mm. Growth is mostly outward so the thighs keep a narrow gap; seen from
-  the side only the middle of the thigh deepens.
+- Trunk: waist 80 mm half-width (the sheet reads 76; the user found that too
+  narrow), a slim belly below it, and the hip flare moved down: the pelvis is
+  much narrower between waist and crotch, the widest point (about 168 mm)
+  sits at the top of the thighs.
+- Legs: fuller thighs, knees and ankles, growing outward; the inner thighs
+  close the gap under the crotch; the knee is 4 cm lower (longer thigh).
+- Bust, seen from the side: lifted and rounder instead of pear-shaped.
 
 Usage: python3 tools/refine_physique.py r14.glb r15.glb
 """
@@ -28,14 +29,20 @@ GENERATOR = 'Neliel physique 15 / tools/refine_physique.py'
 SKIN = 'Pelle e tessuto'
 
 # Sideways scale of the trunk by height (metres above the floor).
-TORSO = [(.96, 1.0), (1.00, .90), (1.037, .84), (1.075, .76), (1.126, .81), (1.154, .83),
-         (1.185, .86), (1.249, .80), (1.29, .93), (1.33, 1.0)]
-TORSO_DEPTH = .5           # share of that scale also applied front to back, below the ribs
+TORSO = [(.88, 1.0), (.916, .95), (.93, .94), (.964, .88), (1.00, .79), (1.037, .73), (1.06, .72),
+         (1.088, .75), (1.11, .78), (1.14, .84), (1.185, .92), (1.249, .83), (1.29, .95), (1.33, 1.0)]
+BELLY_DEPTH = .4           # share of that scale applied to the front of the belly
 # Per leg: height, sideways scale, front-to-back scale.
 LEGS = [(.00, 1.0, 1.0), (.06, 1.0, 1.0), (.12, 1.15, 1.0), (.18, 1.26, 1.05), (.297, 1.22, 1.0),
-        (.434, 1.05, 1.0), (.52, 1.12, 1.0), (.613, 1.34, 1.0), (.689, 1.47, 1.18), (.75, 1.42, 1.12),
-        (.816, 1.30, 1.03), (.87, 1.17, 1.0), (.916, 1.08, 1.0), (.97, 1.0, 1.0)]
+        (.434, 1.05, 1.0), (.52, 1.12, 1.0), (.613, 1.34, 1.0), (.689, 1.47, 1.18), (.75, 1.40, 1.12),
+        (.816, 1.24, 1.03), (.87, 1.08, 1.0), (.916, 1.0, 1.0), (.97, 1.0, 1.0)]
 PIVOT = .35                # 0 keeps the inner edge of the leg, 1 its centre line
+# Where the inner edge of the leg ends up, as a share of its old distance
+# from the midline: the thighs nearly meet under the crotch.
+INNER = [(.0, 1.0), (.5, 1.0), (.613, .85), (.70, .5), (.80, .2), (.97, .2)]
+KNEE_Y, KNEE_DROP, LEG_FIXED = .613, .040, (.20, .90)
+BUST = (.082, 1.31, -.13)  # centre of the region, right side
+BUST_LIFT, BUST_TOP, BUST_UNDER = .020, .010, .012
 RESOLUTION = 1000
 
 
@@ -94,7 +101,7 @@ class Silhouette:
 
 def make_warp(shape):
     torso = curve(TORSO)
-    leg_x, leg_z = curve(LEGS, 1), curve(LEGS, 2)
+    leg_x, leg_z, close = curve(LEGS, 1), curve(LEGS, 2), curve(INNER)
 
     def warp(points, head_bound):
         p = np.asarray(points, dtype=np.float64)
@@ -106,15 +113,17 @@ def make_warp(shape):
 
         # Legs, in the left leg's frame (xm <= 0).
         outer, inner, centre_z = shape.at(y)
+        inner = np.minimum(inner, -1e-4)
         xm = -ax
-        pivot = np.minimum(inner + ((outer + inner) / 2 - inner) * PIVOT, -1e-4)
-        grow = leg_x(y) - 1
+        pivot = np.minimum(inner + ((outer + inner) / 2 - inner) * PIVOT, inner - 1e-4)
         beyond = np.maximum(outer - xm, 0)                    # garments outside the leg
         fade = (1 - smooth(.05, .14, beyond)) * (1 - smooth(.90, .97, y)) * body
-        outside = (np.maximum(xm, outer) - pivot) * grow      # outward: the full scale
-        inside = (xm - pivot) * (xm / pivot) * grow           # toward the midline: eases to nothing at x = 0
-        shift = np.where(xm < pivot, outside, inside) * fade
-        q[:, 0] -= side * shift
+        outside = (np.maximum(xm, outer) - pivot) * (leg_x(y) - 1)
+        # Inner side: the old inner edge moves to `edge`; everything between
+        # the pivot and the midline follows in proportion.
+        edge = inner * close(y)
+        inside = np.where(xm <= inner, (xm - pivot) * ((edge - pivot) / (inner - pivot) - 1), xm * (edge / inner - 1))
+        q[:, 0] -= side * np.where(xm < pivot, outside, inside) * fade
         q[:, 2] += (z - centre_z) * (leg_z(y) - 1) * fade
 
         # Trunk: narrower about the spine; the bust keeps its width.
@@ -122,7 +131,20 @@ def make_warp(shape):
         bust = smooth(1.22, 1.27, y) * (1 - smooth(-.11, -.08, z))
         trunk = (1 - smooth(.19, .23, ax)) * (1 - bust) * body
         q[:, 0] += x * amount * trunk
-        q[:, 2] += (z + .015) * amount * TORSO_DEPTH * (1 - smooth(1.20, 1.26, y)) * trunk
+        q[:, 2] += np.minimum(z + .015, 0) * amount * BELLY_DEPTH * (1 - smooth(1.20, 1.26, y)) * trunk
+
+        # Bust: lifted where it projects, fuller on top, tucked underneath.
+        dx = ax - BUST[0]
+        near = np.exp(-(dx / .075) ** 2 - ((y - BUST[1]) / .085) ** 2) * body * (ax < .19)
+        forward = smooth(-.095, -.165, z)
+        q[:, 1] += BUST_LIFT * forward * near
+        q[:, 2] -= BUST_TOP * np.exp(-((y - 1.375) / .030) ** 2 - (dx / .060) ** 2) * smooth(-.06, -.10, z) * body
+        q[:, 2] += BUST_UNDER * forward * np.exp(-((y - 1.275) / .030) ** 2 - (dx / .070) ** 2) * body
+
+        # Longer thigh, shorter shin: the knee comes down.
+        low, high = LEG_FIXED
+        tent = np.where(y < KNEE_Y, (y - low) / (KNEE_Y - low), (high - y) / (high - KNEE_Y))
+        q[:, 1] -= KNEE_DROP * np.clip(tent, 0, 1) * body * (ax < .30)
         return q
     return warp
 
@@ -147,7 +169,6 @@ def build(source, target):
         raise ValueError('Expected revision 14; do not apply cumulatively')
     shape = Silhouette(asset)
     report(shape, 'Before')
-    print('Target: trunk 74, 73, 82, 108, 178; leg 161, 119, 95, 91, 56')
     apply_map(asset, make_warp(shape))
     report(Silhouette(asset), 'After ')
     for node in asset.d['nodes']:              # rounding dust must not read as a transform

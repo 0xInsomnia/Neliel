@@ -1,3 +1,27 @@
+# Correction — 13 November 2026: revision 15 body reworked after a check
+
+The user rejected the first revision 15 body: waist too narrow, hips too
+wide, too much space between the thighs under the crotch, bust pear-shaped
+in profile; and asked for a check against the reference.
+Check made: the model's outline drawn over the front turnaround figure
+(chin and crotch aligned, 1.523 mm per source pixel) and both profiles side
+by side. It showed: waist as wide as the drawing; widest hip the same but
+reached lower in the drawing, with the pelvis above it about 12% wider on
+the model; thigh gap about 5 cm against 2; bust projecting about 1.5 cm more
+with its fullest point lower; knees 4-5 cm higher than in the drawing.
+`tools/refine_physique.py` now (rest pose, half-widths): under bust 81 mm,
+waist 79, navel 88, top of the hips 107, widest 161 at the top of the
+thighs; leg widths 161 / 129 / 101 / 94 / 53 mm (upper thigh, lower thigh,
+knee, calf, ankle); inner thighs brought to 20% of their old distance from
+the midline; knee 4 cm lower; bust lifted 2 cm where it projects, fuller on
+top, tucked underneath. The waist is left a little wider than the sheet
+(79 against 76) because the user found it narrow.
+Checks: 16 tests pass; zero glTF errors/warnings; rebuilt from the base;
+overlay repeated; four views in Costume studio and dressed.
+Not inspected: poses and wave, contours, real phone. The bust still projects
+more than on the sheet (the user had asked for a larger one earlier); the
+rear is higher than on the side figure.
+
 # Checkpoint — 12 November 2026, revision 15: body proportions (branch `nelielclaude`)
 
 The user asked for the body proportions before the hair.
