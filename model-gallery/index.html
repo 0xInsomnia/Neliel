@@ -80,10 +80,11 @@ a{color:#d4b3ff}
 <span class="tag">VISTA</span><button class="on" data-view="front">Frontale</button><button data-view="side">Profilo</button><button data-view="back">Posteriore</button><button data-view="three">¾</button>
 <span class="spacer"></span><button id="portrait">Viso</button><button id="body" class="on">Corpo intero</button><button id="zoomout">−</button><button id="zoomin">+</button><button id="reset">Reset</button>
 </div>
+<div class="controls" id="appearance-controls" aria-label="Aspetto del personaggio"><span class="tag">ASPETTO</span><button class="on" data-outfit="normal" aria-pressed="true">Vestita</button><button data-outfit="costume" aria-pressed="false">Costume studio</button><button data-outfit="skin" aria-pressed="false">Pelle neutra</button><button id="hair-toggle" aria-pressed="false">Capelli lunghi: visibili</button></div>
 <div id="status" class="status" role="status"><span class="dot"></span><span id="status-text">Carico la cronologia delle versioni…</span></div>
 <div class="note"><strong>Come funziona l'archivio</strong>
 <p>Le revisioni 05, 06, 15 e 16b sono identificate con commit verificati. La pagina cerca inoltre <strong>tutti i checkpoint della mesh</strong> presenti nei branch pubblici di Neliel e li aggiunge ai menu, anche in futuro. I commit intermedi possono avere nomi descrittivi invece di un numero di revisione: non viene inventata una numerazione. Selezionando una versione viene sempre caricata la mesh salvata in quel preciso commit, non il file corrente di un altro branch.</p>
-<p>Il confronto applica lo stesso rendering cel-shaded a entrambe le mesh. Serve per valutare sagoma, viso e proporzioni; le animazioni non sono incluse in questa galleria. I controlli geometrici non sostituiscono il confronto con i disegni originali.</p></div>
+<p>Il confronto applica lo stesso rendering cel-shaded a entrambe le mesh. <strong>Costume studio</strong> usa un costume viola temporaneo applicato alla superficie del corpo in tutte le revisioni. <strong>Pelle neutra</strong> nasconde la texture dei vestiti e mostra la geometria anatomica realmente modellata senza inventare dettagli mancanti. <strong>Capelli lunghi</strong> nasconde coda e ciocche laterali. Queste modalità non modificano i file GLB originali.</p></div>
 <div class="extra"><input id="custom-ref" aria-label="Branch o commit da aggiungere" placeholder="Aggiungi un branch o SHA GitHub" autocomplete="off"><button id="add">Aggiungi modello</button></div>
 <p class="help">Le versioni nuove nei branch GitHub vengono trovate con “Aggiorna versioni”. Puoi anche inserire un nuovo branch o commit senza cambiare il codice. Le scelte A/B sono ricordate su questo dispositivo.</p>
 </main>
@@ -111,6 +112,8 @@ let selection = {a:get('neliel-gallery-a',pinned[2].sha),b:get('neliel-gallery-b
 const loader = new GLTFLoader();
 let cameraState = {azimuth:.10,elevation:.035,zoom:1,mode:'body'};
 let outlines = false;
+let outfitMode = ['normal','costume','skin'].includes(get('neliel-gallery-outfit','normal')) ? get('neliel-gallery-outfit','normal') : 'normal';
+let hairHidden = get('neliel-gallery-hide-hair','false') === 'true';
 
 function report(message){$('status-text').textContent=message;}
 function titleOf(v){
@@ -167,6 +170,69 @@ async function discover(){
  listOptions();$('refresh').disabled=false;
 }
 
+// Temporary visualization materials only; original GLB meshes and morphs remain unchanged.
+function studyAppearance(avatar){
+ const skins=[],accessories=[],longHair=[];
+ avatar.traverse(object=>{
+  if(!object.isMesh || object.name.endsWith('-outline'))return;
+  const original=Array.isArray(object.material)?object.material:[object.material];
+  if(original.some(m=>m?.name==='Pelle e tessuto')){
+   const variants=original.map(m=>{
+    if(m.name!=='Pelle e tessuto')return {original:m,skin:m,costume:m};
+    const skin=m.clone();
+    skin.name='Pelle neutra';skin.map=null;skin.alphaMap=null;
+    skin.color.set(0xe7b39c);skin.emissive?.set(0x000000);skin.needsUpdate=true;
+    const costume=skin.clone();costume.name='Costume studio';
+    const prior=costume.onBeforeCompile;
+    costume.onBeforeCompile=function(shader,renderer){
+     prior?.call(this,shader,renderer);
+     shader.vertexShader=shader.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vNelielPos;');
+     shader.vertexShader=shader.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\nvNelielPos=position;');
+     shader.fragmentShader=shader.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vNelielPos;');
+     shader.fragmentShader=shader.fragmentShader.replace('#include <color_fragment>',[
+       '#include <color_fragment>',
+       'float y=vNelielPos.y; float x=abs(vNelielPos.x);',
+       'float top=step(1.296,y)*step(y,1.427)*step(x,0.177);',
+       'float band=step(1.290,y)*step(y,1.310)*step(x,0.21);',
+       'float strap=step(1.42,y)*step(y,1.49)*(1.0-step(0.009,abs(x-(0.063-0.27*(y-1.42)))));',
+       'float bottom=step(0.923+0.34*x,y)*step(y,1.027-0.20*x)*step(x,0.235);',
+       'float suit=clamp(top+band+strap+bottom,0.0,1.0);',
+       'diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.39,0.10,0.67),suit);'
+     ].join('\n'));
+    };
+    costume.customProgramCacheKey=()=> 'neliel-studio-bikini-v1';
+    costume.needsUpdate=true;
+    return {original:m,skin,costume};
+   });
+   skins.push({object,variants,wasArray:Array.isArray(object.material)});
+  }
+  const mats=original.map(m=>m?.name||'');
+  if(mats.some(n=>/^(Pannelli|Stivali|Dettagli|Gonna|Mantello|Accessori)$/i.test(n))){
+   accessories.push({object,visible:object.visible});
+  }
+  if(/^(Coda|CioccheLaterali|CioccheTempie|CioccheTemporali|Fermaglio|Treccia|Trecce)$/i.test(object.name)
+   ||mats.some(n=>/^(Coda|CioccheLaterali|CioccheTempie|Trecce)$/i.test(n))){
+   longHair.push({object,visible:object.visible});
+  }
+ });
+ function apply(mode,hideHair){
+  for(const record of skins){
+   const type=mode==='skin'?'skin':mode==='costume'?'costume':'original';
+   const chosen=record.variants.map(v=>v[type]);
+   record.object.material=record.wasArray?chosen:chosen[0];
+  }
+  for(const a of accessories)a.object.visible=mode==='normal'&&a.visible;
+  for(const h of longHair)h.object.visible=!hideHair&&h.visible;
+ }
+ function dispose(){
+  apply('normal',false);
+  for(const {variants} of skins)for(const v of variants){
+   if(v.skin!==v.original)v.skin.dispose();
+   if(v.costume!==v.original&&v.costume!==v.skin)v.costume.dispose();
+  }
+ }
+ return {apply,dispose};
+}
 function viewer(side){
  const area=$('area-'+side);
  const scene=new THREE.Scene();
@@ -195,7 +261,7 @@ function viewer(side){
    }
  };
  new ResizeObserver(resize).observe(area);
- let model=null,controller=null,request=0;
+ let model=null,controller=null,appearance=null,request=0;
  function updateCam(){
    const portrait=cameraState.mode==='face';
    const span=portrait?.63:2.02;
@@ -214,6 +280,7 @@ function viewer(side){
  }
  function free(){
    if(!model)return;
+   appearance?.dispose();appearance=null;
    scene.remove(model);
    model.traverse(o=>{if(o.isMesh){
      o.geometry?.dispose();
@@ -248,6 +315,8 @@ function viewer(side){
      root.position.y=-bounds.min.y;
      controller=applyAnimeMaterials(avatar);
      controller.setOutlines(outlines);
+     appearance=studyAppearance(avatar);
+     appearance.apply(outfitMode,hairHidden);
      avatar.traverse(o=>{if(o.isSkinnedMesh)o.frustumCulled=false;});
      scene.add(root);model=root;
      const generator=gltf.parser?.json?.asset?.generator||'';
@@ -296,7 +365,7 @@ function viewer(side){
    else return;
    e.preventDefault();
  });
- return {frame,load,outlines:value=>controller?.setOutlines(value)};
+ return {frame,load,refreshAppearance:()=>appearance?.apply(outfitMode,hairHidden),outlines:value=>controller?.setOutlines(value)};
 }
 let va,vb;
 try{
@@ -339,6 +408,27 @@ $('zoomin').onclick=()=>cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*
 $('zoomout').onclick=()=>cameraState.zoom=THREE.MathUtils.clamp(cameraState.zoom*1.25,.4,3);
 $('reset').onclick=()=>{cameraState={azimuth:0,elevation:.035,zoom:1,mode:'body'};markView('front');focus('body');};
 $('refresh').onclick=discover;
+function updateAppearanceUI(){
+ document.querySelectorAll('[data-outfit]').forEach(b=>{
+  const active=b.dataset.outfit===outfitMode;
+  b.classList.toggle('on',active);b.setAttribute('aria-pressed',String(active));
+ });
+ $('hair-toggle').classList.toggle('on',hairHidden);
+ $('hair-toggle').setAttribute('aria-pressed',String(hairHidden));
+ $('hair-toggle').textContent=hairHidden?'Capelli lunghi: nascosti':'Capelli lunghi: visibili';
+}
+function redrawOutfit(){va?.refreshAppearance();vb?.refreshAppearance();}
+document.querySelectorAll('[data-outfit]').forEach(b=>b.addEventListener('click',()=>{
+ outfitMode=b.dataset.outfit;
+ save('neliel-gallery-outfit',outfitMode);
+ updateAppearanceUI();redrawOutfit();
+}));
+$('hair-toggle').onclick=()=>{
+ hairHidden=!hairHidden;
+ save('neliel-gallery-hide-hair',String(hairHidden));
+ updateAppearanceUI();redrawOutfit();
+};
+updateAppearanceUI();
 $('add').onclick=async()=>{
  const input=$('custom-ref');
  const ref=input.value.trim();
