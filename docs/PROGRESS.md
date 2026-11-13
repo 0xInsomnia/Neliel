@@ -1,3 +1,32 @@
+# Correction — 13 November 2026: revision 15 body, second rework
+
+The user: proportions still off, and a rectangular opening at the junction
+of the legs. Asked for the closest possible match to the drawings.
+Findings (enlarged crops of the front and side turnaround figures, three
+zones each, 1.523 mm per source pixel):
+- The opening: on the stock mesh the legs part about 5 cm above the point
+  where the drawing's legs part, leaving a slot; the previous rework closed
+  the thighs only below it. Now the inner thighs meet from the drawing's
+  crotch upward (4% of the old gap is kept so the map stays invertible) and
+  open gradually below.
+- Legs had been under-read: the calf is 115 mm wide (was set to 91) and the
+  whole leg is 20-40% deeper in profile. Leg 28 mm longer, knee 16 mm lower
+  on it. Widths and depths are listed in `tools/refine_physique.py`.
+- Rear, in profile: 2 cm fuller and about 3 cm lower.
+- Head, neck, shoulders (161 mm half-width at the deltoids), bust: match.
+  The drawn head looks bigger only through its hair volume (hair is next).
+- Stance: the studio spread the thighs by 0.048 rad; the refined model now
+  uses 0.02 (`stance` option of `loadAvatar`), which puts knees and ankles
+  where the front figure has them. Framing raised for the taller figure.
+Check: outline over the front figure follows head, shoulders, bust, waist,
+hips, closed thighs, knees, calves and feet; profiles compared side by side.
+16 tests pass; zero glTF errors/warnings; rebuilt from the base.
+Inspected: junction close up (front, rear, from below), four views in
+Costume studio and dressed, the studio page at phone size.
+Not inspected: poses and wave with the thicker legs, contours, real phone.
+Known: a hair-thin wedge stays open under the crotch in the studio stance;
+the model stands upright while the side figure leans from the hips.
+
 # Correction — 13 November 2026: revision 15 body reworked after a check
 
 The user rejected the first revision 15 body: waist too narrow, hips too

@@ -1,19 +1,23 @@
 """Revision 15: body proportions from the reference turnaround.
 
-Input must be r14. Measured on the front and side figures of the private
-sheet and checked by drawing the model's outline over the front figure
-(chin and crotch aligned); only the numbers are kept here. Heights of chin,
-shoulders, bust and waist, the shoulder joints and the bust width already
-matched and are left alone. One space map moves meshes, garments, morphs
-and joints together:
+Input must be r14. Measured on enlarged crops of the front and side figures
+of the private sheet (1.523 mm per source pixel, chin and crotch aligned
+with the model) and checked by drawing the model's outline over the front
+figure; only the numbers are kept here. Head, neck, shoulders, bust width
+and the heights of bust and waist already matched and are left alone. One
+space map moves meshes, garments, morphs and joints together:
 
-- Trunk: waist 80 mm half-width (the sheet reads 76; the user found that too
-  narrow), a slim belly below it, and the hip flare moved down: the pelvis is
-  much narrower between waist and crotch, the widest point (about 168 mm)
-  sits at the top of the thighs.
-- Legs: fuller thighs, knees and ankles, growing outward; the inner thighs
-  close the gap under the crotch; the knee is 4 cm lower (longer thigh).
+- Trunk: waist 80 mm half-width, a slim belly, and the hip flare moved down
+  so the widest point (about 165 mm) sits at the top of the thighs.
+- Crotch: on the stock mesh the legs part 5 cm too high and leave a slot.
+  The inner thighs are brought together up to that point, so the legs now
+  part where the drawing's do and open gradually below.
+- Legs: 28 mm longer, with a longer thigh (knee 16 mm lower); much fuller
+  in width and in depth, calves included. Widths in mm from 12 cm below the
+  crotch down to the ankle: 157, 144, 120, 107, 97 (knee), 101, 115 (calf),
+  107, 83, 63, 57; depths: 198, 169, 140, 127, 113, 124, 134, 122, 100, 77.
 - Bust, seen from the side: lifted and rounder instead of pear-shaped.
+- Rear, seen from the side: fuller and about 3 cm lower.
 
 Usage: python3 tools/refine_physique.py r14.glb r15.glb
 """
@@ -32,17 +36,24 @@ SKIN = 'Pelle e tessuto'
 TORSO = [(.88, 1.0), (.916, .95), (.93, .94), (.964, .88), (1.00, .79), (1.037, .73), (1.06, .72),
          (1.088, .75), (1.11, .78), (1.14, .84), (1.185, .92), (1.249, .83), (1.29, .95), (1.33, 1.0)]
 BELLY_DEPTH = .4           # share of that scale applied to the front of the belly
-# Per leg: height, sideways scale, front-to-back scale.
-LEGS = [(.00, 1.0, 1.0), (.06, 1.0, 1.0), (.12, 1.15, 1.0), (.18, 1.26, 1.05), (.297, 1.22, 1.0),
-        (.434, 1.05, 1.0), (.52, 1.12, 1.0), (.613, 1.34, 1.0), (.689, 1.47, 1.18), (.75, 1.40, 1.12),
-        (.816, 1.24, 1.03), (.87, 1.08, 1.0), (.916, 1.0, 1.0), (.97, 1.0, 1.0)]
+# Per leg, by height on the incoming mesh: sideways scale, front-to-back scale.
+LEGS = [(.00, 1.0, 1.0), (.06, 1.05, 1.0), (.14, 1.25, 1.10), (.188, 1.32, 1.13), (.22, 1.45, 1.20),
+        (.299, 1.49, 1.33), (.392, 1.41, 1.26), (.472, 1.41, 1.26), (.55, 1.37, 1.30), (.5965, 1.33, 1.19),
+        (.639, 1.44, 1.27), (.679, 1.46, 1.40), (.745, 1.41, 1.35), (.811, 1.22, 1.28), (.87, 1.08, 1.13),
+        (.916, 1.0, 1.05), (.97, 1.0, 1.0)]
 PIVOT = .35                # 0 keeps the inner edge of the leg, 1 its centre line
 # Where the inner edge of the leg ends up, as a share of its old distance
-# from the midline: the thighs nearly meet under the crotch.
-INNER = [(.0, 1.0), (.5, 1.0), (.613, .85), (.70, .5), (.80, .2), (.97, .2)]
-KNEE_Y, KNEE_DROP, LEG_FIXED = .613, .040, (.20, .90)
+# from the midline. Next to nothing from the drawing's crotch upward closes the slot.
+INNER = [(.0, 1.0), (.5, 1.0), (.5965, .68), (.639, .55), (.70, .38), (.80, .22), (.86, .15),
+         (.915, .04), (1.5, .04)]      # not quite zero: the map must stay invertible
+# Heights: incoming -> outgoing. Longer legs, the knee lower on the leg.
+HEIGHTS = [(-1, -1), (.08, .08), (.613, .597), (.90, .928)]
+HEIGHT_IN = [k[0] for k in HEIGHTS] + [3.0]
+HEIGHT_OUT = [k[1] for k in HEIGHTS] + [3.0 + HEIGHTS[-1][1] - HEIGHTS[-1][0]]
+RISE = HEIGHTS[-1][1] - HEIGHTS[-1][0]
 BUST = (.082, 1.31, -.13)  # centre of the region, right side
 BUST_LIFT, BUST_TOP, BUST_UNDER = .020, .010, .012
+REAR_BACK, REAR_DOWN = .020, .025   # the rear fuller and lower, as on the side figure
 RESOLUTION = 1000
 
 
@@ -118,19 +129,20 @@ def make_warp(shape):
         pivot = np.minimum(inner + ((outer + inner) / 2 - inner) * PIVOT, inner - 1e-4)
         beyond = np.maximum(outer - xm, 0)                    # garments outside the leg
         fade = (1 - smooth(.05, .14, beyond)) * (1 - smooth(.90, .97, y)) * body
-        outside = (np.maximum(xm, outer) - pivot) * (leg_x(y) - 1)
+        outside = (np.maximum(xm, outer) - pivot) * (leg_x(y) - 1) * fade
         # Inner side: the old inner edge moves to `edge`; everything between
-        # the pivot and the midline follows in proportion.
+        # the pivot and the midline follows in proportion. No fade by height:
+        # it has to reach the point where the legs join.
         edge = inner * close(y)
         inside = np.where(xm <= inner, (xm - pivot) * ((edge - pivot) / (inner - pivot) - 1), xm * (edge / inner - 1))
-        q[:, 0] -= side * np.where(xm < pivot, outside, inside) * fade
+        q[:, 0] -= side * np.where(xm < pivot, outside, inside * body)
         q[:, 2] += (z - centre_z) * (leg_z(y) - 1) * fade
 
         # Trunk: narrower about the spine; the bust keeps its width.
         amount = torso(y) - 1
         bust = smooth(1.22, 1.27, y) * (1 - smooth(-.11, -.08, z))
         trunk = (1 - smooth(.19, .23, ax)) * (1 - bust) * body
-        q[:, 0] += x * amount * trunk
+        q[:, 0] *= 1 + amount * trunk
         q[:, 2] += np.minimum(z + .015, 0) * amount * BELLY_DEPTH * (1 - smooth(1.20, 1.26, y)) * trunk
 
         # Bust: lifted where it projects, fuller on top, tucked underneath.
@@ -141,20 +153,23 @@ def make_warp(shape):
         q[:, 2] -= BUST_TOP * np.exp(-((y - 1.375) / .030) ** 2 - (dx / .060) ** 2) * smooth(-.06, -.10, z) * body
         q[:, 2] += BUST_UNDER * forward * np.exp(-((y - 1.275) / .030) ** 2 - (dx / .070) ** 2) * body
 
-        # Longer thigh, shorter shin: the knee comes down.
-        low, high = LEG_FIXED
-        tent = np.where(y < KNEE_Y, (y - low) / (KNEE_Y - low), (high - y) / (high - KNEE_Y))
-        q[:, 1] -= KNEE_DROP * np.clip(tent, 0, 1) * body * (ax < .30)
+        # Rear: its fullest point sits lower and further back.
+        behind = (1 - smooth(.19, .23, ax)) * body
+        q[:, 2] += REAR_BACK * np.exp(-((y - 1.00) / .060) ** 2) * smooth(.0, .05, z) * behind
+        q[:, 1] -= REAR_DOWN * np.exp(-((y - 1.04) / .060) ** 2) * smooth(.02, .08, z) * behind
+
+        # Heights. Whatever hangs from the head rises with it as one piece.
+        q[:, 1] += np.where(head_bound, RISE, np.interp(y, HEIGHT_IN, HEIGHT_OUT) - y)
         return q
     return warp
 
 
-def report(shape, label):
+def report(shape, label, rise=0.0):
     def leg(y):
-        return np.interp(y, shape.y, shape.width)
+        return np.interp(np.interp(y, HEIGHT_IN, HEIGHT_OUT) if rise else y, shape.y, shape.width)
 
     def trunk(y):
-        return np.interp(y, shape.y, shape.half)
+        return np.interp(y + rise, shape.y, shape.half)
     print(f'{label}: trunk half-width (mm) under bust {trunk(1.249) * 1e3:.0f}, waist {trunk(1.185) * 1e3:.0f}, '
           f'navel {trunk(1.14) * 1e3:.0f}, hip top {trunk(1.075) * 1e3:.0f}, hips {trunk(.964) * 1e3:.0f}; '
           f'leg width upper thigh {leg(.816) * 1e3:.0f}, lower thigh {leg(.689) * 1e3:.0f}, knee {leg(.613) * 1e3:.0f}, '
@@ -170,7 +185,7 @@ def build(source, target):
     shape = Silhouette(asset)
     report(shape, 'Before')
     apply_map(asset, make_warp(shape))
-    report(Silhouette(asset), 'After ')
+    report(Silhouette(asset), 'After ', RISE)
     for node in asset.d['nodes']:              # rounding dust must not read as a transform
         if 'translation' in node:
             node['translation'] = [0.0 if abs(v) < 1e-12 else v for v in node['translation']]

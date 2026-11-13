@@ -21,7 +21,7 @@ const scene = new T.Scene();
 const camera = new T.PerspectiveCamera(37, 1, .035, 25);
 const original = new URLSearchParams(location.search).get('model') === 'original';
 // This revision is taller than the base, so it needs its own framing.
-const framing = original ? {} : { body: { target: .91, span: 1.97 }, portrait: { target: 1.59 } };
+const framing = original ? {} : { body: { target: .925, span: 2.0 }, portrait: { target: 1.618 } };
 const orbit = controlCamera(canvas, camera, mode => {
   el('home').setAttribute('aria-pressed', String(mode === 'body'));
   el('portrait').setAttribute('aria-pressed', String(mode === 'portrait'));
@@ -123,6 +123,7 @@ try {
   el('compare-model').textContent = original ? 'Mostra revisione 15' : 'Confronta con la base 0.3';
   avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials, {
     widen: original ? 1.08 : 1,
+    stance: original ? .048 : .02,
     studyMap: original ? null : new URL('../assets/body-study.png', import.meta.url),
   });
   scene.add(avatar.root);

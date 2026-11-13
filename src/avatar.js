@@ -13,7 +13,7 @@ const expressions = [
   { name: 'Occhiolino', weights: { wink: 1, smile: .58 } },
 ];
 
-export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08, studyMap = null } = {}) {
+export async function loadAvatar(url, reducedMotion, prepareMaterials = () => null, { widen = 1.08, studyMap = null, stance = .048 } = {}) {
   const { scene } = await new GLTFLoader().loadAsync(url.href);
   const materialController = prepareMaterials(scene);
   const root = new Group();
@@ -33,7 +33,7 @@ export async function loadAvatar(url, reducedMotion, prepareMaterials = () => nu
     return [key, bone];
   }));
   bones.head.scale.set(.94, .96, .97);
-  for (const [side, angle] of [['L', -.048], ['R', .048]]) {
+  for (const [side, angle] of [['L', -stance], ['R', stance]]) {
     const thigh = scene.getObjectByName(`J_Bip_${side}_UpperLeg`);
     const foot = scene.getObjectByName(`J_Bip_${side}_Foot`);
     thigh.rotation.z = angle;
