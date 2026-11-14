@@ -1,0 +1,10 @@
+name: Restore Neliel body study 02
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+jobs:
+  restore:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "Waiting for validated recovery bundle."
