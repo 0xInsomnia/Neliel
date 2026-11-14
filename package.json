@@ -1,0 +1,1 @@
+{"name":"neliel-jean-study","private":true,"type":"module","scripts":{"serve":"python3 -m http.server 8080","test":"node tools/check-study.mjs"}}

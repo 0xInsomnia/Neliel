@@ -1,0 +1,21 @@
+<!doctype html><html lang="it"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1"><title>Neliel · Studio corpo 01</title><style>body{margin:0;background:#171321;color:#eee;font:15px system-ui}canvas{display:block;touch-action:none}header{position:absolute;top:16px;left:18px;pointer-events:none}h1{font-size:20px;margin:0 0 6px}small{color:#c5b6d8}.panel{position:absolute;bottom:18px;left:12px;right:12px;display:flex;flex-wrap:wrap;justify-content:center;gap:7px}button,label{background:#332641;color:#fff;border:1px solid #766087;border-radius:10px;padding:10px}#status{position:absolute;top:85px;left:18px;max-width:90%}</style><header><h1>NELIEL · Studio corpo 01</h1><small>Base Jean · proporzioni in lavorazione<br>Trascina per ruotare · pizzica per zoomare</small></header><div id="status">Caricamento…</div><div class="panel"><button data-angle="0">Fronte</button><button data-angle="1.570796">Profilo</button><button data-angle="3.141593">Retro</button><button data-angle="0.65">¾</button><label><input type="checkbox" id="correction" checked>Correzione corpo</label></div><script type="importmap">{"imports":{"three":"./vendor/three/three.module.min.js"}}</script><script type="module">
+import * as T from 'three';import {GLTFLoader} from './vendor/three/addons/loaders/GLTFLoader.js';
+const status=document.querySelector('#status');
+try{
+const scene=new T.Scene();scene.background=new T.Color('#171321');const camera=new T.PerspectiveCamera(32,innerWidth/innerHeight,.01,100);const renderer=new T.WebGLRenderer({antialias:true});renderer.setSize(innerWidth,innerHeight);renderer.setPixelRatio(Math.min(devicePixelRatio,2));document.body.prepend(renderer.domElement);
+scene.add(new T.HemisphereLight(0xece0ff,0x403448,2.3));const light=new T.DirectionalLight(0xffffff,3);light.position.set(2,4,5);scene.add(light);
+const ramp=new T.DataTexture(new Uint8Array([65,130,200,255]),4,1,T.RedFormat);ramp.needsUpdate=true;ramp.minFilter=ramp.magFilter=T.NearestFilter;
+let angle=0,tilt=.08,distance=3.9,model;const center=new T.Vector3(0,.95,0),morphs=[];
+const gltf=await new GLTFLoader().loadAsync('./assets/neliel-study.glb');model=gltf.scene;scene.add(model);model.traverse(o=>{if(o.isMesh){const old=o.material;o.material=new T.MeshToonMaterial({color:old.color||0xa899be,gradientMap:ramp,side:T.DoubleSide});if(o.morphTargetDictionary?.Neliel_body_study_01!==undefined)morphs.push(o)}});
+status.textContent='Studio di proporzioni • outfit provvisorio • posa statica';setTimeout(()=>status.style.display='none',6000);
+document.querySelector('#correction').onchange=e=>{for(const o of morphs)o.morphTargetInfluences[o.morphTargetDictionary.Neliel_body_study_01]=+e.target.checked};
+document.querySelectorAll('[data-angle]').forEach(b=>b.onclick=()=>angle=+b.dataset.angle);
+const pointers=new Map();let previousGap=0;const canvas=renderer.domElement;
+canvas.onpointerdown=e=>{canvas.setPointerCapture(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);previousGap=0};
+canvas.onpointermove=e=>{if(!pointers.has(e.pointerId))return;const old=pointers.get(e.pointerId);pointers.set(e.pointerId,[e.clientX,e.clientY]);if(pointers.size===1){angle-=(e.clientX-old[0])*.008;tilt=T.MathUtils.clamp(tilt+(e.clientY-old[1])*.004,-.5,.5)}else{const p=[...pointers.values()];const gap=Math.hypot(p[0][0]-p[1][0],p[0][1]-p[1][1]);if(previousGap)distance=T.MathUtils.clamp(distance*previousGap/gap,1.5,6);previousGap=gap}};
+canvas.onpointerup=canvas.onpointercancel=e=>{pointers.delete(e.pointerId);previousGap=0};canvas.onwheel=e=>{e.preventDefault();distance=T.MathUtils.clamp(distance+e.deltaY*.003,1.5,6)};
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+renderer.setAnimationLoop(()=>{camera.position.set(Math.sin(angle)*distance,center.y+Math.sin(tilt)*distance,Math.cos(angle)*distance);camera.lookAt(center);renderer.render(scene,camera)});
+window.nelielStudy={model,morphs,renderer};
+}catch(e){status.textContent='Impossibile avviare la vista 3D: '+e.message;console.error(e)}
+</script></html>
