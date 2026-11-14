@@ -1,13 +1,13 @@
 {
-  "phase": "body-study-01, not approved",
+  "phase": "body-study-02, not approved",
   "original_bones": 539,
   "body_vertices": 12817,
-  "body_key_blocks": 33,
+  "body_key_blocks": 34,
   "tests": [
     {
       "bone": "lShldrBend",
       "degrees": 30,
-      "max_displacement": 0.0351242158108308,
+      "max_displacement": 0.03520661314571224,
       "moved_vertices": 768,
       "finite": true,
       "constraints_muted_for_FK_probe": true
@@ -15,7 +15,7 @@
     {
       "bone": "lForearmBend",
       "degrees": 65,
-      "max_displacement": 0.0707340439776747,
+      "max_displacement": 0.07075687600944743,
       "moved_vertices": 988,
       "finite": true,
       "constraints_muted_for_FK_probe": true
@@ -23,23 +23,23 @@
     {
       "bone": "lThighBend",
       "degrees": 35,
-      "max_displacement": 0.045523689773854105,
-      "moved_vertices": 1172,
+      "max_displacement": 0.045539856655406157,
+      "moved_vertices": 1175,
       "finite": true,
       "constraints_muted_for_FK_probe": true
     },
     {
       "bone": "lShin",
       "degrees": 65,
-      "max_displacement": 0.42347020325378637,
+      "max_displacement": 0.4282120969395043,
       "moved_vertices": 1824,
       "finite": true,
       "constraints_muted_for_FK_probe": true
     }
   ],
   "limitations": [
-    "Garment is static fitting accessory; final outfit not started.",
-    "Joint tests isolate FK with constraints muted, not full controller validation.",
-    "Reference body proportions still require visual iteration."
+    "Static fitting garments are not final rigged clothing.",
+    "FK probes mute constraints; full controller behavior is not tested.",
+    "Reference drawings use different poses and are not calibrated orthographic measurements."
   ]
 }

@@ -31,3 +31,21 @@ runtime infrastructure recovered from previous work.
   error before page launch. Do not claim Samsung or WebGL validation.
 - Final hair, face redesign, original outfit and animations are NOT completed.
 - Full editable source stored as lossless binary parts with verified reconstruction.
+
+## Body study 02
+- Added a second reversible shape key over study 01: a subtle widening across
+  the waist and upper hip, with smooth falloff; no bones or weights changed.
+- Visually inspected front, side, back and three-quarter Blender workbench renders
+  against the supplied drawings. Pose, camera and provisional clothing differ;
+  this is a small iteration, not a verified match. Torso-to-pelvis silhouette,
+  head, long hair, outfit and neutral stance still require work.
+- Rebuilt the static fitting garments around the revised body; their edges are
+  rough and they do not follow the correction toggle or joint movement.
+- The blend retains 539 rig bones, 12,817 body vertices and 34 shape key blocks.
+  Four isolated FK probes moved vertices with finite coordinates; constraints were
+  muted during these probes, so full rig behavior is not established.
+- Updated the inspection GLB and viewer toggle for both corrective keys. Export
+  warns about an invalid source mesh and truncates influences to four; this version
+  has not been validated with the Khronos validator or tested on Samsung/WebGL.
+- Source parts were reconstructed and SHA-256 verified. Earlier study remains
+  available in the parent commit. Private reference drawings are not committed.
