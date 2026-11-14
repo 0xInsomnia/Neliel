@@ -1,0 +1,12 @@
+name: Neliel recovery readiness
+on:
+  push:
+    branches:
+      - recovery/neliel-0006a78
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - run: echo "Recovery staging available"
