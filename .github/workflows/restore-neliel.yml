@@ -1,10 +1,31 @@
-name: Restore Neliel body study 02
+name: Recover Neliel body study 02
 on:
-  workflow_dispatch:
+  push:
+    branches:
+      - recovery/neliel-body-study-02
 permissions:
   contents: write
 jobs:
   restore:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - run: echo "Waiting for validated recovery bundle."
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify and recover original Git objects
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat .recovery/neliel-0006a785/part-*.b64 | base64 --decode > /tmp/neliel-body-study-02.bundle
+          test "$(sha256sum /tmp/neliel-body-study-02.bundle | cut -d' ' -f1)" = "07e29513cf9d2bb094075769b0561593394405a39bab228882c7b4252184c1fe"
+          git bundle verify /tmp/neliel-body-study-02.bundle
+          git fetch /tmp/neliel-body-study-02.bundle refs/heads/restored
+          test "$(git rev-parse FETCH_HEAD)" = "0006a785bf2bdbc9e4a2f25f0dfbd67e63e34678"
+          git fetch origin refs/heads/feature/neliel-neko-rebuild
+          test "$(git rev-parse FETCH_HEAD)" = "3880db81a0b63e98e243dce334e0cddb1044b9b9"
+      - name: Publish original commit to existing feature branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          git push origin 0006a785bf2bdbc9e4a2f25f0dfbd67e63e34678:refs/heads/feature/neliel-neko-rebuild
