@@ -16,8 +16,8 @@ Copie sorgente recuperabili dal mirror `madjin/vrm-samples`, commit
 - https://github.com/madjin/vrm-samples/blob/e16eb187100149a315ad92c3c9968f1d5baa6c7d/vroid/beta/Victoria_Rubin.vrm
 
 Entrambi i file incorporano `licenseName: CC0`, uso da parte di `Everyone` e
-permesso commerciale. Non sostituire automaticamente queste copie con i preset
-più recenti: i termini possono essere diversi. Lo script verifica gli hash esatti.
+permesso commerciale. Lo script di ricostruzione qui documentato verifica gli hash
+esatti delle copie elencate.
 
 Fonti ufficiali per le edizioni beta:
 
