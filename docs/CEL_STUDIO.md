@@ -66,7 +66,7 @@ versione un risultato artistico definitivo o una demo graficamente certificata.
    generici come sostituto della modellazione. Conservare il tatuaggio sulla coscia.
 4. Texture dipinte e maschera facciale orientata alla luce; calibrazione toon
    sul modello definitivo, invece di tentare di correggere la forma con shader.
-5. Clip idle/walk autoriali o con licenza verificata, AnimationMixer e stati con
+5. Clip idle/walk, AnimationMixer e stati con
    crossfade, contatto dei piedi, poi joystick e stanza.
 
 Nessun nuovo asset esterno è stato aggiunto. Le immagini di riferimento non sono
