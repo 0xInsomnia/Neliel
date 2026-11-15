@@ -5,6 +5,8 @@ import { controlCamera } from './camera.js';
 
 const el = id => document.getElementById(id);
 const stage = el('stage');
+const model = new URLSearchParams(location.search).get('model');
+const neko = model === 'neko';
 const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)');
 const say = message => { el('status').textContent = message; };
 const renderer = new T.WebGLRenderer({ antialias: true, alpha: true, powerPreference: 'high-performance' });
@@ -22,7 +24,7 @@ const camera = new T.PerspectiveCamera(37, 1, .035, 25);
 const orbit = controlCamera(canvas, camera, mode => {
   el('home').setAttribute('aria-pressed', String(mode === 'body'));
   el('portrait').setAttribute('aria-pressed', String(mode === 'portrait'));
-});
+}, neko ? { body: { target: .94, span: 2.13, azimuth: .10, elevation: .04 } } : undefined);
 
 scene.add(new T.HemisphereLight(0xffeef8, 0x59436e, .85));
 function light(color, intensity, position) {
@@ -114,18 +116,26 @@ el('zoom-in').onclick = () => { orbit.zoomIn(); say('Zoom avanti'); };
 el('zoom-out').onclick = () => { orbit.zoomOut(); say('Zoom indietro'); };
 
 try {
-  const original = new URLSearchParams(location.search).get('model') === 'original';
-  const modelName = original ? 'Base 0.3' : 'Revisione 06';
+  const original = model === 'original';
+  const modelName = neko ? 'Neko · prova locale' : original ? 'Base 0.3' : 'Revisione 06';
   el('model-label').textContent = modelName;
-  el('compare-model').href = original ? './' : '?model=original';
-  el('compare-model').textContent = original ? 'Mostra revisione 06' : 'Confronta con la base 0.3';
-  avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials);
+  el('compare-model').href = original || neko ? './' : '?model=original';
+  el('compare-model').textContent = original || neko ? 'Mostra revisione 06' : 'Confronta con la base 0.3';
+  if (neko) {
+    const { loadNekoAvatar } = await import('./neko-avatar.js');
+    avatar = await loadNekoAvatar(new URL('../assets/neko-local.glb', import.meta.url), reducedMotion);
+    el('outfit-label').textContent = 'Originale';
+    el('hair').hidden = true;
+  } else {
+    avatar = await loadAvatar(new URL(original ? '../assets/neliel.glb' : '../assets/neliel-refined.glb', import.meta.url), reducedMotion, applyAnimeMaterials);
+  }
   scene.add(avatar.root);
   for (const [id, action, label] of [
     ['outfit', 'changeOutfit', 'Outfit'], ['hair', 'changeHair', 'Capelli'],
     ['pose', 'changePose', 'Posa'], ['expression', 'changeExpression', 'Espressione'],
   ]) {
     el(id).onclick = () => {
+      if (!avatar[action]) return;
       const value = avatar[action]();
       el(`${id}-label`).textContent = value;
       say(`${label} · ${value}`);
@@ -150,5 +160,7 @@ try {
   }
 } catch (error) {
   console.error(error);
-  failure('Impossibile caricare il modello 3D di Neliel.');
+  failure(neko
+    ? 'Impossibile caricare Neko. Verifica l’esportazione in assets/neko-local.glb e ricarica.'
+    : 'Impossibile caricare il modello 3D di Neliel.');
 }

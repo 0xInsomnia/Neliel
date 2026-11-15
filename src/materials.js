@@ -18,8 +18,7 @@ function ramp(values) {
   return texture;
 }
 
-export function createAnimeMaterial(source, ramps) {
-  const profile = materialProfile(source.name);
+export function createAnimeMaterial(source, ramps, profile = materialProfile(source.name)) {
   const options = {
     name: source.name, color: source.color.clone(), map: source.map,
     alphaMap: source.alphaMap, alphaTest: source.alphaTest,
@@ -51,7 +50,7 @@ export function createAnimeMaterial(source, ramps) {
   return material;
 }
 
-export function applyAnimeMaterials(scene) {
+export function applyAnimeMaterials(scene, profileFor = source => materialProfile(source.name)) {
   const ramps = {
     body: ramp([85, 85, 85, 85, 158, 158, 240, 240]),
     face: ramp([160, 166, 178, 200, 224, 242, 250, 255]),
@@ -63,12 +62,12 @@ export function applyAnimeMaterials(scene) {
   for (const mesh of candidates) {
     const originals = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     const materials = originals.map(source => {
-      if (!converted.has(source)) converted.set(source, createAnimeMaterial(source, ramps));
+      if (!converted.has(source)) converted.set(source, createAnimeMaterial(source, ramps, profileFor(source)));
       return converted.get(source);
     });
     mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
     // Omit facial shells: expanded eyelashes/eyes create dark halos in close-ups.
-    if (originals.length !== 1 || !['hair', 'fabric'].includes(materialProfile(originals[0].name)) || originals[0].transparent) continue;
+    if (originals.length !== 1 || !['hair', 'fabric'].includes(profileFor(originals[0])) || originals[0].transparent) continue;
     const ink = new T.MeshBasicMaterial({ color: 0x30243f, side: T.BackSide });
     ink.customProgramCacheKey = () => 'neliel-outline-v1';
     ink.onBeforeCompile = shader => {

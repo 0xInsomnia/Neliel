@@ -6,15 +6,15 @@ const views = {
 };
 const tapRadius = 10;
 
-export function controlCamera(canvas, camera, onView) {
+export function controlCamera(canvas, camera, onView, viewOverrides = {}) {
   const pointers = new Map();
   const target = new Vector3();
-  let view = views.body;
+  let view;
   let azimuth, elevation, zoom, lastTap;
   let multiTouch = false;
 
   function reset(mode = 'body') {
-    view = views[mode];
+    view = viewOverrides[mode] ?? views[mode];
     azimuth = view.azimuth;
     elevation = view.elevation;
     zoom = 1;

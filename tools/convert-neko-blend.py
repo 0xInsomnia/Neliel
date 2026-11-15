@@ -85,6 +85,7 @@ def main():
         export_format="GLB",
         use_selection=False,
         export_skins=True,
+        export_armature_object_remove=True,
         export_morph=True,
         export_animations=True,
     )

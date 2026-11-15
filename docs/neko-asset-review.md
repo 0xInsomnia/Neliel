@@ -1,39 +1,45 @@
-# Verifica tecnica del modello Neko
+# Neko nello studio 3D di Neliel
 
-**Branch di prova isolato; `main` non viene modificato.**
+L'archivio `Neko.zip` contiene un progetto Blender 3.0 con 6 mesh, 46.803
+vertici sorgente, 70.674 triangoli e un rig ValveBiped di 85 ossa. Il viso
+contiene 60 shape key, compresa la base. Il file richiama Shiroko di Blue Archive
+nei nomi del rig, dei materiali e nei percorsi delle immagini. La provenienza
+esatta e la licenza non sono confermate dall'archivio.
 
-## Asset esaminato
+## Prova locale
 
-Archivio fornito in chat: `Neko.zip`. Progetto: `Neko/source/Neko/source/Neko.blend`, Blender 3.0 (file compresso Zstandard).
+Estrarre l'archivio e lanciare dal repository. Export verificato con Blender 4.3.2.
 
-Risultati dell'ispezione del file binario:
-- 6 mesh: corpo, viso, abbigliamento, capelli, occhiali, accessorio circolare;
-- **46.803 vertici** e **70.674 triangoli** totali;
-- **1 armatura con 85 ossa**, comprese gambe, mani, dita, occhi, orecchie e ciocche di capelli;
-- **6 modificatori Armature** e gruppi di deformazione nelle mesh;
-- **60 shape key sul viso** (ammiccamento, occhi, bocca e fonemi);
-- 12 materiali e 11 datablock immagine; texture PNG disponibili nell'archivio;
-- **0 azioni di animazione** incorporate (`bAction` non presente).
+```bash
+blender --background --disable-autoexec /percorso/Neko/source/Neko/source/Neko.blend \
+  --python-exit-code 1 --python tools/convert-neko-blend.py -- \
+  --textures /percorso/Neko/source/Neko/textures \
+  --output assets/neko-local.glb
+npm run dev
+```
+
+Aprire [la modalità di prova](http://localhost:8080/cel-studio/?model=neko).
+L'asset di prova è caricato da una copia locale. La modalità mappa le ossa,
+le shape key e i materiali di Neko sui comandi dello studio. Il comando capelli è nascosto
+perché l'acconciatura è una mesh unica.
 
 ## Esito
 
-**Base tecnica riutilizzabile per un prototipo, ma non ancora integrata nell'app.** Non è un asset originale già corrispondente alle immagini di Neliel. Vanno modificati proporzioni/viso, capelli, abbigliamento e accessori.
+- GLB da 18.417.096 byte con 6 mesh, 85 ossa, 59 morph, 8 texture incorporate
+  e zero clip. I movimenti dello studio sono procedurali.
+- Il primo export segnalava sei mesh skinnate sotto il nodo dell'armatura.
+  L'opzione di Blender che esporta le mesh alla radice risolve tutti e sei
+  i warning. Il GLB finale ha zero errori e zero warning nel validatore Khronos.
+- Le immagini `tex_Raidingsuit` e `tex_Uniform_Sub` mancano nell'archivio.
+  Gli otto materiali esportati hanno tutti una texture di base incorporata.
+- Con il loader di Three.js dell'app, sorriso, sorpresa e occhiolino muovono
+  rispettivamente 1.220, 880 e 615 vertici del viso nella prova. Il saluto
+  deforma la mesh del braccio.
+- Verificato in Chromium con WebGL software. Controllati fronte, profilo e
+  retro, primo piano, espressioni, saluto e caricamento della revisione 06.
+- `npm test` supera i 16 test esistenti. Le prestazioni e i gesti sul
+  Samsung S24 restano da misurare su dispositivo.
 
-Problemi da risolvere:
-1. Alcune texture usano percorsi esterni Windows non validi e nomi non corrispondenti a quelli dello ZIP; ricollegarle prima dell'export.
-2. Alcune immagini referenziate non sono disponibili nello ZIP: verificare in Blender i materiali coinvolti.
-3. Servono animazioni e prova reale delle deformazioni e delle shape key.
-4. Convertire in `.glb` per l'app Web e verificare prestazioni e shader su Samsung/Android.
-5. Testare visualmente l'export dentro l'app, poi regolare cel shading e compatibilita dei morph target.
-
-## Strumenti
-
-`tools/convert-neko-blend.py` prepara un export GLB da eseguire **dentro Blender**. La conversione non e stata eseguita in questo ambiente (Blender non installato) e il risultato va validato prima dell'integrazione.
-
-Esempio dopo aver estratto `Neko.zip`:
-
-```bash
-blender --background path/to/Neko.blend --python tools/convert-neko-blend.py -- --textures path/to/Neko/source/Neko/textures --output build/neliel-neko-test.glb
-```
-
-Il file .blend e le texture originali sono ancora nell'allegato della chat, **non sono stati caricati su GitHub**. In questo branch sono inclusi soltanto analisi e script di conversione, per non dare l'impressione che il modello sia gia importato e funzionante.
+Neko funziona come base tecnica. Le proporzioni del viso e del corpo, le
+orecchie, i capelli e il costume vanno adattati al design di Neliel. Le texture
+arrivano a 4096 px e il GLB pesa circa 6,3 volte quello della revisione 06.

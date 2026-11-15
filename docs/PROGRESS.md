@@ -1,3 +1,18 @@
+# Prova Neko nello studio 3D — 15 novembre 2026
+
+`feature/neko-model-validation` espone una modalità locale
+`cel-studio/?model=neko`. Blender 4.3.2 ha prodotto un GLB di 18.417.096 byte
+con 8 texture, 85 ossa e 59 morph. Khronos Validator: 0 errori, 0 warning.
+Lo studio mappa il rig ValveBiped e applica pose, espressioni e cel shading.
+
+Verificati numericamente spostamenti dei vertici del braccio e del viso.
+In Chromium con WebGL software sono stati controllati fronte, profilo, retro,
+sorriso, sorpresa, occhiolino e saluto. I 16 test di `npm test` passano.
+Il GLB resta locale. Restano da valutare aspetto finale e prestazioni su
+Samsung S24. Istruzioni e dettagli in [neko-asset-review.md](neko-asset-review.md).
+
+---
+
 # Integrity recovery — 9 November 2026
 
 The previously published revision 06 in `50e3ff2` was truncated to 16,384
