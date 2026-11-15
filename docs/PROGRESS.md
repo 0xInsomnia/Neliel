@@ -492,8 +492,7 @@ Second body pass, after the user confirmed the figure lacked curves: hips
 knee, waist slightly narrower, bust projected forward rather than widened.
 Inspected in Costume studio: front, profile, rear. The dressed outfit was not
 re-inspected after this pass. Style target restated by the user: Genshin-like
-3D cel shading, for both the look and ease of modelling (rendering reference
-only; no proprietary assets).
+3D cel shading, for both the look and ease of modelling.
 
 Third body pass on user feedback (hips too wide, bust could be larger, body
 hard to read): pelvis widening reduced from 27% to 13%, thigh growth from 33%
