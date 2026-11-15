@@ -1,7 +1,7 @@
 # Neliel: development and recovery
 
 - Work exclusively in `0xInsomnia/Neliel`.
-- Target: an articulated anime character with high quality modelling, cel shading and animation. Do not copy proprietary game assets.
+- Target: an articulated anime character with high quality modelling, cel shading and animation.
 - Reference images and personal details are private and must not be committed.
 - Prioritize actual mesh and outfit quality. Shader changes alone do not meet the character goal. Do not replace the character with geometric primitives.
 - Use free tools; preserve touch controls, rig and facial morphs.
