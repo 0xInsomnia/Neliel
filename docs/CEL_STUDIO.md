@@ -59,7 +59,7 @@ versione un risultato artistico definitivo o una demo graficamente certificata.
 
 1. Aprire lo studio su WebGL2 funzionante, confrontare figura intera e primo piano,
    ruotare fronte/profilo/retro, provare espressioni, coda e contorni; misurare S24.
-2. Modellazione autoriale del volto e UV dedicate: mandibola, occhi, palpebre,
+2. Modellazione del volto e UV dedicate: mandibola, occhi, palpebre,
    naso, bocca; correzione di tutti i morph insieme alla nuova topologia.
 3. Acconciatura a ciocche larga/lunga fedele al concept, outfit nero/viola e
    geometria separata per pelle, tessuto e metallo. Evitare ulteriori recolor
