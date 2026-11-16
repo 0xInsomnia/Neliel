@@ -1,3 +1,24 @@
+# Model editor mini app — 16 November 2026
+
+New `model-editor/` (index.html, editor.js, core.js): opens a .glb/.vrm, lets
+the user pick a bone by tap or list and change its size (whole/X/Y/Z) and
+position, with left/right symmetry, then exports by patching only node
+translation/scale in the original GLB JSON (binary chunk copied untouched).
+`node tools/build-model-editor.mjs` packs it into `dist/model-editor.html`
+(single offline file, gitignored). Does not modify the shipped assets.
+
+Checks: `npm test` 25 pass (9 new in tests/model-editor.test.js); export of an
+edited neliel-refined.glb has zero glTF validator errors/warnings and reopens
+with the edits. Headless Chromium with software WebGL: load, sliders, tap
+picking before/after edits, front/side/back views, phone viewport, file://.
+
+Limits: bone-level proportions only, no vertex sculpting. Plain PBR preview,
+not the toon shader. No real .vrm file was tested (only the two GLBs); VRM
+spring-bone colliders are not rescaled. Not tested on a physical phone.
+Blender re-import of an exported file not checked.
+
+---
+
 # Integrity recovery — 9 November 2026
 
 The previously published revision 06 in `50e3ff2` was truncated to 16,384
