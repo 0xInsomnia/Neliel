@@ -6,7 +6,9 @@ import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 import {
   buildGlb, buildNeighbours, displaceZone, humanoidBones, mainBoneLabel, mirrorName, pairInfluence, parseGlb, patchNodes,
   positionAccessorProblem, resolveScales, sanitizeState, shortName, smoothPoints, weldVertices, writePositions,
+  repackBuffer,
 } from './core.js';
+import { createPaint } from './paint.js';
 
 const $ = id => document.getElementById(id);
 const stage = $('stage');
@@ -266,13 +268,14 @@ async function open(name, buffer) {
   $('tools').hidden = false;
   status.hidden = true;
   const extension = name.split('.').pop().toLowerCase();
-  $('export-note').textContent = `Il file esportato (.${extension}) mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa modificate e la forma delle zone ritoccate.`;
+  $('export-note').textContent = `Il file esportato (.${extension}) mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa, le zone, i colori e le texture che hai ritoccato.`;
   frame();
   const first = parts.findIndex(part => part.label === 'Testa');
   select(first >= 0 ? first : Number(partSelect.value));
   refreshZones();
   setMode(mode);
   buildLayers(gltf, json, root);
+  paint.build(gltf, json, root);
   history = [JSON.stringify(snapshot())];
   cursor = 0;
   showHistory();
@@ -327,6 +330,7 @@ function addSlider(host, context, { label, min, max, step, read, write, format }
   if (typeof label === 'string') labelNode.textContent = label;
   const [minus, input, plus] = wrap.querySelector('.line').children;
   const set = value => {
+    if (!context.get()) return;
     context.change((part, side) => write(part, MathUtils.clamp(value, min, max), side));
     output.textContent = format(read(context.get()));
     input.value = read(context.get());
@@ -446,9 +450,10 @@ function pick(event) {
     (event.clientX - bounds.left) / bounds.width * 2 - 1,
     -(event.clientY - bounds.top) / bounds.height * 2 + 1), camera);
   const shown = object => !object || (object.visible && shown(object.parent));
-  const hit = raycaster.intersectObject(model.root, true).find(item => shown(item.object) && opaqueAt(item));
+  const hit = raycaster.intersectObject(model.root, true).find(item => shown(item.object) && !item.object.name.endsWith('-outline') && opaqueAt(item));
   if (!hit) return;
   if (mode === 'zones') return pickZone(hit);
+  if (mode === 'paint') return void paint.pick(hit);
   let object = hit.object;
   const { skinIndex, skinWeight } = hit.object.geometry.attributes;
   if (hit.object.isSkinnedMesh && skinIndex && hit.face) {
@@ -479,6 +484,7 @@ const clear = part => Object.assign(part, { uniform: 1, axes: [1, 1, 1], offset:
 $('reset-part').onclick = () => { edit(clear); select(current); commit(); };
 $('reset-all').onclick = () => {
   if (!confirm('Annullare tutte le modifiche al modello?')) return;
+  paint.forgetReplacements();
   setState({ parts: {}, zones: [] });
   refreshEditors();
   commit();
@@ -494,6 +500,7 @@ const snapshot = () => ({
   parts: Object.fromEntries(model.parts.filter(part => !untouched(part)).map(part =>
     [part.name, { uniform: part.uniform, axes: [...part.axes], offset: [...part.offset], follows: part.follows }])),
   zones: model.zones.map(({ cache, ...zone }) => structuredClone(zone)),
+  ...paint.snapshot(),
 });
 
 // Returns how many saved bones this model does not have.
@@ -508,6 +515,7 @@ function setState(state) {
   model.zones = state.zones.map(zone => ({ ...structuredClone(zone), cache: null }));
   apply();
   applyZones();
+  paint.setState(state);
   return missing;
 }
 
@@ -554,8 +562,10 @@ function compare(on) {
   if (on) {
     held = snapshot();
     setState({ parts: {}, zones: [] });
+    paint.original(true);
     for (const item of [marker, ...reach]) item.visible = false;
   } else {
+    paint.original(false);
     setState(held);
     held = null;
     refreshEditors();
@@ -597,7 +607,7 @@ $('preset-file').onchange = async event => {
   }
 };
 
-$('export').onclick = () => {
+$('export').onclick = async () => {
   const edits = new Map();
   const differs = (a, b) => a.some((value, i) => Math.abs(value - b[i]) > 1e-7);
   for (const part of model.parts) {
@@ -615,6 +625,8 @@ $('export').onclick = () => {
     for (const target of reshaped) writePositions(json, bin, target.accessor, target.local);
     rest = [{ type: rest[0].type, data: bin }, ...rest.slice(1)];
   }
+  const images = await paint.exportInto(json);
+  if (images.size) rest = [{ type: rest[0].type, data: repackBuffer(json, rest[0].data, images) }, ...rest.slice(1)];
   download(new Blob([buildGlb(json, rest)], { type: 'model/gltf-binary' }),
     `${stem()}-modificato${model.name.slice(model.name.lastIndexOf('.'))}`);
 };
@@ -866,13 +878,23 @@ function setMode(next) {
   $('mode-bones').setAttribute('aria-pressed', mode === 'bones');
   $('mode-zones').setAttribute('aria-pressed', mode === 'zones');
   $('bone-mode').hidden = mode !== 'bones';
+  $('mode-paint').setAttribute('aria-pressed', mode === 'paint');
   $('zone-mode').hidden = mode !== 'zones';
+  $('paint-mode').hidden = mode !== 'paint';
   if (!model) return;
   if (mode === 'bones') select(current);
   showZone();
+  if (mode === 'paint') {
+    marker.visible = false;
+    $('chip').hidden = !paint.current();
+    $('chip').textContent = paint.current() ?? '';
+    paint.drawUv();
+    redraw();
+  }
 }
 $('mode-bones').onclick = () => setMode('bones');
 $('mode-zones').onclick = () => setMode('zones');
+$('mode-paint').onclick = () => setMode('paint');
 zoneSelect.onchange = () => selectZone(Number(zoneSelect.value));
 $('zone-new').onclick = () => {
   wantNewZone = true;
@@ -894,6 +916,15 @@ $('zone-mirror').onchange = () => {
   commit();
 };
 
+const paint = createPaint({
+  $, addSlider, redraw, commit, download, getModel: () => model,
+  onSelect(name) {
+    if (mode !== 'paint') return;
+    $('chip').hidden = !name;
+    $('chip').textContent = name ?? '';
+  },
+});
+
 // One checkbox per mesh, so hair or clothes can be hidden to reach what
 // they cover. Visibility is a viewing aid only and is never exported.
 function buildLayers(gltf, json, root) {
@@ -910,6 +941,7 @@ function buildLayers(gltf, json, root) {
     const box = Object.assign(document.createElement('input'), { type: 'checkbox', checked: true });
     box.onchange = () => {
       for (const object of objects) object.visible = box.checked;
+      paint.refreshOutlines();
       redraw();
     };
     label.append(box, ` ${json.meshes[index].name || `Mesh ${index + 1}`}`);

@@ -6,6 +6,12 @@
 <meta name="theme-color" content="#100c1b">
 <meta name="description" content="Editor di proporzioni per modelli GLB e VRM: allarga, stringi, alza e sposta le parti.">
 <title>Neliel · Editor modello</title>
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Editor 3D">
 <style>
 :root{color-scheme:dark;font:15px system-ui,-apple-system,Segoe UI,sans-serif;background:#100c1b;color:#f5efff;--muted:#c4b5db;--violet:#ca9eff;--line:#b985ff35;--card:#1b1430}
 *,*::before,*::after{box-sizing:border-box}
@@ -34,7 +40,9 @@ button:hover,.file:hover,select:hover{border-color:#c0a0ff}
 button:disabled{opacity:.45;cursor:default}
 :is(button,select,input):focus-visible,.file:focus-within{outline:2px solid var(--violet);outline-offset:2px}
 .accent,.seg button[aria-pressed=true]{background:#7d4bc4;border-color:#b98cff}
-.seg{display:flex;gap:8px}.seg button{flex:1}
+.seg{display:flex;gap:6px}.seg button{flex:1;padding:10px 6px;font-size:13.5px}
+.tint{display:flex;gap:10px;align-items:center;margin-top:10px}.tint input{width:54px;height:42px;padding:2px;border-radius:11px;border:1px solid #ffffff36;background:#2e2544;flex:none}.tint span{flex:1;font-size:13px}.tint button{flex:none}
+#uv{display:block;width:100%;height:auto;margin-top:10px;border-radius:10px;border:1px solid var(--line);background:repeating-conic-gradient(#2a2140 0 25%,#1b1430 0 50%) 0 0/16px 16px}
 .group{display:contents}
 .row{display:flex;gap:8px;flex-wrap:wrap}
 .row>*{flex:1 1 auto}
@@ -92,6 +100,7 @@ fieldset:disabled section{opacity:.5}
       <div class="seg" role="group" aria-label="Strumento">
         <button type="button" id="mode-bones" aria-pressed="true">Parti del corpo</button>
         <button type="button" id="mode-zones" aria-pressed="false">Zona libera</button>
+        <button type="button" id="mode-paint" aria-pressed="false">Colori</button>
       </div>
       <div class="group" id="bone-mode">
       <section>
@@ -129,8 +138,36 @@ fieldset:disabled section{opacity:.5}
         </fieldset>
       </section>
       </div>
+      <div class="group" id="paint-mode" hidden>
+      <section>
+        <h2>Materiale</h2>
+        <p class="small" style="margin-top:0">Tocca il modello per scegliere cosa colorare.</p>
+        <fieldset class="inner" id="material-controls" disabled>
+          <select id="material" aria-label="Materiale" style="margin-top:9px"></select>
+          <label class="tint"><input type="color" id="tint" aria-label="Tinta"><span>Tinta (si moltiplica sulla texture)</span>
+            <button type="button" id="tint-reset">Azzera</button></label>
+          <div id="material-sliders"></div>
+        </fieldset>
+      </section>
+      <section>
+        <h2>Texture</h2>
+        <p class="small" style="margin-top:0" id="texture-note"></p>
+        <fieldset class="inner" id="texture-controls" disabled>
+          <div id="texture-sliders"></div>
+          <div class="row" style="margin-top:12px">
+            <button type="button" id="texture-save">Scarica PNG</button>
+            <label class="file">Sostituisci<input type="file" id="texture-file" accept="image/png,image/jpeg,image/webp"></label>
+          </div>
+          <div class="row" style="margin-top:8px"><button type="button" id="texture-reset">Ripristina texture originale</button></div>
+          <label class="check"><input type="checkbox" id="uv-grid" checked> Mostra la griglia dei poligoni (UV)</label>
+          <canvas id="uv" hidden></canvas>
+        </fieldset>
+      </section>
+      </div>
       <section>
         <h2>Mostra</h2>
+        <label class="check" style="margin-top:0"><input type="checkbox" id="toon"> Anteprima cel shading</label>
+        <label class="check"><input type="checkbox" id="outline" disabled> Contorni</label>
         <div id="layers"></div>
         <p class="small">Nascondi capelli o vestiti per raggiungere ciò che coprono. Le parti nascoste restano nel file esportato.</p>
       </section>
@@ -145,12 +182,18 @@ fieldset:disabled section{opacity:.5}
           <label class="file">Carica modifiche<input type="file" id="preset-file" accept=".json,application/json"></label>
         </div>
         <p class="small" id="preset-note">«Salva modifiche» crea un piccolo file per riprendere il lavoro più tardi sullo stesso modello originale. Tieni premuto «Originale» sulla vista per confrontare prima e dopo.</p>
-        <p class="small" id="export-note">Il file esportato mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa modificate e la forma delle zone ritoccate.</p>
+        <p class="small" id="export-note">Il file esportato mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa, le zone, i colori e le texture che hai ritoccato.</p>
       </section>
     </fieldset>
   </div>
 </main>
 <noscript>Attiva JavaScript per usare l'editor.</noscript>
 <script type="module" src="./editor.js"></script>
+<script>
+// Installed as an app, the editor keeps working offline through this worker.
+if ('serviceWorker' in navigator && (location.protocol === 'https:' || /^(localhost|127\.0\.0\.1)$/.test(location.hostname))) {
+  navigator.serviceWorker.register('./sw.js').catch(console.warn);
+}
+</script>
 </body>
 </html>

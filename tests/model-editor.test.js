@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
+import { inflateSync } from 'node:zlib';
 import {
-  buildGlb, buildNeighbours, displaceZone, falloff, humanoidBones, mainBoneLabel, mirrorName, pairInfluence,
-  parentScaleInChild, parseGlb, patchNodes, positionAccessorProblem, resolveScales, sanitizeState, shortName,
-  smoothPoints, weldVertices, writePositions,
+  adjustPixels, buildGlb, buildNeighbours, colourMatrix, displaceZone, encodePng, falloff, humanoidBones, mainBoneLabel,
+  mirrorName, pairInfluence, parentScaleInChild, parseGlb, patchMaterial, patchNodes, positionAccessorProblem, repackBuffer,
+  resolveScales, sanitizeState, shortName, smoothPoints, weldVertices, writePositions,
 } from '../model-editor/core.js';
 
 const asset = new URL('../assets/neliel-refined.glb', import.meta.url);
@@ -175,7 +176,95 @@ test('saved edits are validated and clamped before use', () => {
   const clean = sanitizeState({ parts: { Head: { uniform: 9, axes: [1, 'x', 1], offset: [0, .1, 0], follows: 0 } }, zones: [zone] });
   assert.deepEqual(clean.parts.Head, { uniform: 2, axes: [1, 1, 1], offset: [0, .1, 0], follows: false });
   assert.deepEqual(clean.zones[0], { ...zone, widen: 0, smooth: 0 });
+  assert.deepEqual(clean.materials, {});
+  const paint = sanitizeState({ parts: {}, zones: [], materials: { 3: { colour: '#FF00aa', opacity: 7 } }, images: { 2: { hue: 999, saturation: 'x' } } });
+  assert.deepEqual(paint.materials[3], { colour: '#ff00aa', opacity: 1, glow: null });
+  assert.deepEqual(paint.images[2], { hue: 180, saturation: 0, lightness: 0, contrast: 0 });
   for (const bad of [null, {}, { parts: {}, zones: [{}] }, { parts: { a: 1 }, zones: [] }, { parts: {}, zones: [{ ...zone, radius: 'x' }] }]) {
     assert.throws(() => sanitizeState(bad), /valide/);
   }
+});
+
+test('colour adjustment is exact when neutral and keeps alpha', () => {
+  const source = Uint8Array.from([10, 200, 90, 0, 255, 0, 0, 128, 12, 12, 12, 255]);
+  const same = new Uint8Array(source.length);
+  adjustPixels(source, same, colourMatrix({}));
+  assert.deepEqual(same, source);
+  const turned = new Uint8Array(source.length);
+  adjustPixels(source, turned, colourMatrix({ hue: 120 }));
+  assert.ok(turned[5] > turned[4] && turned[5] > turned[6], 'red rotates towards green');
+  assert.deepEqual([turned[3], turned[7], turned[11]], [0, 128, 255]);
+  const grey = new Uint8Array(source.length);
+  adjustPixels(source, grey, colourMatrix({ saturation: -1 }));
+  assert.ok(Math.abs(grey[4] - grey[5]) <= 1 && Math.abs(grey[5] - grey[6]) <= 1);
+  const dark = new Uint8Array(source.length);
+  adjustPixels(source, dark, colourMatrix({ lightness: -1 }));
+  assert.deepEqual([...dark.subarray(0, 3)], [0, 0, 0]);
+});
+
+function decodePng(file) {
+  const view = new DataView(file.buffer, file.byteOffset);
+  const width = view.getUint32(16), height = view.getUint32(20);
+  const idat = [];
+  for (let offset = 8; offset < file.length;) {
+    const length = view.getUint32(offset);
+    if (String.fromCharCode(...file.subarray(offset + 4, offset + 8)) === 'IDAT') idat.push(file.subarray(offset + 8, offset + 8 + length));
+    offset += 12 + length;
+  }
+  const raw = inflateSync(Buffer.concat(idat));
+  const stride = width * 4;
+  const pixels = new Uint8Array(stride * height);
+  for (let y = 0; y < height; y++) {
+    const filter = raw[y * (stride + 1)];
+    for (let x = 0; x < stride; x++) {
+      const before = filter === 1 ? (x >= 4 ? pixels[y * stride + x - 4] : 0) : filter === 2 ? (y ? pixels[(y - 1) * stride + x] : 0) : 0;
+      pixels[y * stride + x] = raw[y * (stride + 1) + 1 + x] + before;
+    }
+  }
+  return { width, height, pixels };
+}
+
+test('the PNG writer round-trips pixels, including colour under zero alpha', async () => {
+  const width = 5, height = 4;
+  const pixels = Uint8Array.from({ length: width * height * 4 }, (_, i) => (i * 37 + (i >> 3) * 11) & 255);
+  pixels.set([200, 100, 50, 0], 0); // transparent but coloured
+  const file = await encodePng(pixels, width, height);
+  assert.deepEqual([...file.subarray(0, 8)], [137, 80, 78, 71, 13, 10, 26, 10]);
+  const back = decodePng(file);
+  assert.equal(back.width, width);
+  assert.equal(back.height, height);
+  assert.deepEqual(back.pixels, pixels);
+});
+
+test('repacking swaps one buffer view and keeps every other byte', async () => {
+  const { json, rest } = parseGlb(await load());
+  const copy = structuredClone(json);
+  const target = copy.images[8].bufferView;
+  const fresh = Uint8Array.from({ length: 1001 }, (_, i) => i & 255);
+  const bin = repackBuffer(copy, rest[0].data, new Map([[target, fresh]]));
+  assert.equal(copy.buffers[0].byteLength, bin.length);
+  assert.equal(bin.length % 4, 0);
+  copy.bufferViews.forEach((view, i) => {
+    assert.equal(view.byteOffset % 4, 0);
+    const now = bin.subarray(view.byteOffset, view.byteOffset + view.byteLength);
+    const old = json.bufferViews[i];
+    const before = i === target ? fresh : rest[0].data.subarray(old.byteOffset ?? 0, (old.byteOffset ?? 0) + old.byteLength);
+    assert.ok(Buffer.from(now).equals(Buffer.from(before)), `view ${i}`);
+  });
+  assert.ok(bin.length < rest[0].data.length, 'the old image is dropped, not left behind');
+});
+
+test('material edits reach glTF and both VRM flavours', () => {
+  const json = {
+    materials: [{ pbrMetallicRoughness: { baseColorFactor: [1, .5, 1, 1] }, extensions: { VRMC_materials_mtoon: { shadeColorFactor: [.8, .4, .8] } } }, {}],
+    extensions: { VRM: { materialProperties: [{ vectorProperties: { _Color: [1, 1, 1, 1] } }] } },
+  };
+  patchMaterial(json, 0, { linear: [.5, .5, .25], srgb: [.73, .73, .54], opacity: .5, emissive: [.2, 3, 0] });
+  assert.deepEqual(json.materials[0].pbrMetallicRoughness.baseColorFactor, [.5, .5, .25, .5]);
+  assert.equal(json.materials[0].alphaMode, 'BLEND');
+  assert.deepEqual(json.materials[0].emissiveFactor, [.2, 1, 0]);
+  assert.deepEqual(json.extensions.VRM.materialProperties[0].vectorProperties._Color, [.73, .73, .54, .5]);
+  assert.deepEqual(json.materials[0].extensions.VRMC_materials_mtoon.shadeColorFactor, [.4, .4, .2]);
+  patchMaterial(json, 1, { linear: [1, 0, 0], srgb: [1, 0, 0], opacity: 1 });
+  assert.deepEqual(json.materials[1], { pbrMetallicRoughness: { baseColorFactor: [1, 0, 0, 1] } });
 });

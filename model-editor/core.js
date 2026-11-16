@@ -345,5 +345,158 @@ export function sanitizeState(data) {
     };
   });
   if (zones.some(zone => Number.isNaN(zone.radius))) fail();
-  return { parts, zones };
+  const materials = {};
+  for (const [index, item] of Object.entries(data.materials ?? {})) {
+    if (!item || typeof item !== 'object') fail();
+    materials[index] = {
+      colour: /^#[0-9a-f]{6}$/i.test(item.colour) ? item.colour.toLowerCase() : null,
+      opacity: number(item.opacity, 1, 0, 1), glow: number(item.glow, null, 0, 1),
+    };
+  }
+  const images = {};
+  for (const [index, item] of Object.entries(data.images ?? {})) {
+    if (!item || typeof item !== 'object') fail();
+    images[index] = {
+      hue: number(item.hue, 0, -180, 180), saturation: number(item.saturation, 0, -1, 1),
+      lightness: number(item.lightness, 0, -1, 1), contrast: number(item.contrast, 0, -1, 1),
+    };
+  }
+  return { parts, zones, materials, images };
+}
+
+// --------------------------------------------------------------- textures
+// Hue (degrees), saturation, lightness and contrast (each −1…1, 0 = as is)
+// folded into one colour matrix: rows of [r, g, b, offset] on 0–255 values.
+export function colourMatrix({ hue = 0, saturation = 0, lightness = 0, contrast = 0 }) {
+  const lr = .213, lg = .715, lb = .072;
+  const cos = Math.cos(hue * Math.PI / 180), sin = Math.sin(hue * Math.PI / 180);
+  const rotate = [
+    lr + cos * (1 - lr) - sin * lr, lg - cos * lg - sin * lg, lb - cos * lb + sin * (1 - lb),
+    lr - cos * lr + sin * .143, lg + cos * (1 - lg) + sin * .14, lb - cos * lb - sin * .283,
+    lr - cos * lr - sin * (1 - lr), lg - cos * lg + sin * lg, lb + cos * (1 - lb) + sin * lb,
+  ];
+  const s = 1 + saturation;
+  const saturate = [
+    lr + (1 - lr) * s, lg - lg * s, lb - lb * s,
+    lr - lr * s, lg + (1 - lg) * s, lb - lb * s,
+    lr - lr * s, lg - lg * s, lb + (1 - lb) * s,
+  ];
+  const gain = (1 + lightness) * (1 + contrast);
+  const offset = 127.5 * (1 - (1 + contrast));
+  const out = [];
+  for (let row = 0; row < 3; row++) {
+    for (let column = 0; column < 3; column++) {
+      out.push(gain * (saturate[row * 3] * rotate[column] + saturate[row * 3 + 1] * rotate[3 + column]
+        + saturate[row * 3 + 2] * rotate[6 + column]));
+    }
+    out.push(offset);
+  }
+  return out;
+}
+
+// RGBA bytes in, RGBA bytes out; alpha is copied untouched.
+export function adjustPixels(source, target, m) {
+  for (let i = 0; i < source.length; i += 4) {
+    const r = source[i], g = source[i + 1], b = source[i + 2];
+    target[i] = Math.min(255, Math.max(0, m[0] * r + m[1] * g + m[2] * b + m[3] + .5));
+    target[i + 1] = Math.min(255, Math.max(0, m[4] * r + m[5] * g + m[6] * b + m[7] + .5));
+    target[i + 2] = Math.min(255, Math.max(0, m[8] * r + m[9] * g + m[10] * b + m[11] + .5));
+    target[i + 3] = source[i + 3];
+  }
+}
+
+let crcTable;
+function crc32(bytes, crc = -1) {
+  crcTable ??= Uint32Array.from({ length: 256 }, (_, n) => {
+    for (let k = 0; k < 8; k++) n = n & 1 ? 0xedb88320 ^ (n >>> 1) : n >>> 1;
+    return n >>> 0;
+  });
+  for (let i = 0; i < bytes.length; i++) crc = crcTable[(crc ^ bytes[i]) & 255] ^ (crc >>> 8);
+  return crc;
+}
+
+// Writes RGBA bytes as a PNG without going through a canvas, which would
+// throw away the colour of fully transparent pixels and leave dark fringes
+// around cut-out hair and cloth.
+export async function encodePng(pixels, width, height) {
+  const stride = width * 4;
+  const raw = new Uint8Array((stride + 1) * height);
+  for (let y = 0; y < height; y++) {
+    const row = y * stride, out = y * (stride + 1);
+    // Pick whichever of the "left" and "above" predictors leaves less to store.
+    let left = 0, above = 0;
+    for (let x = 0; x < stride; x += 7) {
+      const value = pixels[row + x];
+      left += Math.abs((value - (x >= 4 ? pixels[row + x - 4] : 0)) << 24 >> 24);
+      above += Math.abs((value - (y ? pixels[row + x - stride] : 0)) << 24 >> 24);
+    }
+    const filter = above < left ? 2 : 1;
+    raw[out] = filter;
+    for (let x = 0; x < stride; x++) {
+      const before = filter === 1 ? (x >= 4 ? pixels[row + x - 4] : 0) : (y ? pixels[row + x - stride] : 0);
+      raw[out + 1 + x] = pixels[row + x] - before;
+    }
+  }
+  const packed = new Uint8Array(await new Response(
+    new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+  const header = new Uint8Array(13);
+  const view = new DataView(header.buffer);
+  view.setUint32(0, width);
+  view.setUint32(4, height);
+  header.set([8, 6, 0, 0, 0], 8);
+  const chunks = [['IHDR', header], ['IDAT', packed], ['IEND', new Uint8Array(0)]];
+  const file = new Uint8Array(8 + chunks.reduce((sum, [, data]) => sum + 12 + data.length, 0));
+  file.set([137, 80, 78, 71, 13, 10, 26, 10]);
+  const out = new DataView(file.buffer);
+  let offset = 8;
+  for (const [type, data] of chunks) {
+    const tag = new TextEncoder().encode(type);
+    out.setUint32(offset, data.length);
+    file.set(tag, offset + 4);
+    file.set(data, offset + 8);
+    out.setUint32(offset + 8 + data.length, ~crc32(data, crc32(tag)) >>> 0);
+    offset += 12 + data.length;
+  }
+  return file;
+}
+
+// Rebuilds the binary chunk with some buffer views swapped for new bytes
+// (replacements: Map(bufferView index → Uint8Array)), e.g. a re-coloured
+// image of a different size. Offsets in `json` are updated to match.
+export function repackBuffer(json, bin, replacements) {
+  const views = json.bufferViews.map((view, index) => ({ view, index }))
+    .filter(({ view }) => view.buffer === 0)
+    .sort((a, b) => (a.view.byteOffset ?? 0) - (b.view.byteOffset ?? 0));
+  const parts = views.map(({ view, index }) => replacements.get(index)
+    ?? bin.subarray(view.byteOffset ?? 0, (view.byteOffset ?? 0) + view.byteLength));
+  const total = parts.reduce((sum, part) => sum + Math.ceil(part.length / 4) * 4, 0);
+  const out = new Uint8Array(total);
+  let offset = 0;
+  views.forEach(({ view }, i) => {
+    out.set(parts[i], offset);
+    view.byteOffset = offset;
+    view.byteLength = parts[i].length;
+    offset += Math.ceil(parts[i].length / 4) * 4;
+  });
+  json.buffers[0].byteLength = total;
+  return out;
+}
+
+// Writes a material's colour edits. `linear` and `srgb` are the same tint in
+// the two encodings: glTF stores linear, VRM 0.x keeps an sRGB copy that VRM
+// viewers read instead.
+export function patchMaterial(json, index, { linear, srgb, opacity, emissive }) {
+  const material = json.materials[index];
+  const pbr = material.pbrMetallicRoughness ??= {};
+  const before = pbr.baseColorFactor ?? [1, 1, 1, 1];
+  pbr.baseColorFactor = [...linear.map(tidy), tidy(opacity)];
+  if (opacity < 1 && (material.alphaMode ?? 'OPAQUE') === 'OPAQUE') material.alphaMode = 'BLEND';
+  if (emissive) material.emissiveFactor = emissive.map(value => tidy(Math.min(1, Math.max(0, value))));
+  const legacy = json.extensions?.VRM?.materialProperties?.[index]?.vectorProperties;
+  if (legacy?._Color) legacy._Color = [...srgb.map(tidy), tidy(opacity)];
+  const toon = material.extensions?.VRMC_materials_mtoon;
+  if (toon?.shadeColorFactor) {
+    toon.shadeColorFactor = toon.shadeColorFactor.map((value, axis) =>
+      tidy(Math.min(1, before[axis] > 1e-4 ? value * linear[axis] / before[axis] : value)));
+  }
 }

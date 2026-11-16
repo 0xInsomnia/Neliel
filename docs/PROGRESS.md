@@ -35,6 +35,23 @@ gives a byte-identical export, and that export has zero validator
 errors/warnings. Smoothing was inspected on one glute zone only; saved zones
 are positions on the original mesh, so they only fit the same source model.
 
+Added after that (same day): a third mode "Colori" in `model-editor/paint.js`:
+per-material tint, opacity and glow; hue/saturation/lightness/contrast on the
+base-colour texture; texture download as PNG and replacement from a file; a
+flat UV view with the polygon grid; and a cel-shading preview reusing
+`src/materials.js` (view only). Export re-encodes changed images with an
+own PNG writer (keeps colour under zero alpha) and repacks the binary chunk.
+Also a web-app manifest, icons and `sw.js` so the served editor can be
+installed on a phone and run offline; needs HTTPS hosting (e.g. GitHub Pages),
+which is NOT set up.
+Checks: 35 tests pass; an export with tint + recoloured + replaced textures has
+zero validator errors/warnings and, reopened, differs from the edited view in
+7 of 693k pixels (max 6 levels); compare/undo return pixel-identical views;
+offline reload through the service worker works on localhost.
+Limits: replaced textures are not part of undo or the saved-edits file; only
+embedded base-colour images are editable; the VRM colour fields are written but
+no real .vrm was tested; install on a real phone not tested.
+
 Limits (bone mode): proportions only. Plain PBR preview,
 not the toon shader. No real .vrm file was tested (only the two GLBs); VRM
 spring-bone colliders are not rescaled. Not tested on a physical phone.
