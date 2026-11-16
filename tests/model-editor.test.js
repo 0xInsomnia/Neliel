@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
-  buildGlb, humanoidBones, mainBoneLabel, mirrorName, parentScaleInChild, parseGlb, patchNodes, resolveScales, shortName,
+  buildGlb, falloff, humanoidBones, mainBoneLabel, mirrorName, pairInfluence, parentScaleInChild, parseGlb, patchNodes, positionAccessorProblem, resolveScales, shortName, writePositions,
 } from '../model-editor/core.js';
 
 const asset = new URL('../assets/neliel-refined.glb', import.meta.url);
@@ -50,7 +50,9 @@ test('body bones get Italian labels, secondary bones do not', () => {
   assert.equal(mainBoneLabel('J_Bip_C_UpperChest'), 'Petto alto');
   assert.equal(mainBoneLabel('mixamorig:LeftForeArm'), 'Avambraccio sx');
   assert.equal(mainBoneLabel('Bone.042', 'rightHand'), 'Mano dx');
-  for (const name of ['J_Bip_L_Index1', 'J_Sec_L_Bust1', 'J_Adj_L_FaceEye', 'HairJoint-245c', 'Ponytail_0', 'J_Bip_L_ToeBase_end', 'J_Sec_L_LowerSleeve']) {
+  assert.equal(mainBoneLabel('J_Sec_L_Bust1'), 'Seno sx');
+  assert.equal(mainBoneLabel('J_Sec_R_Bust1'), 'Seno dx');
+  for (const name of ['J_Bip_L_Index1', 'J_Sec_L_Bust2', 'J_Adj_L_FaceEye', 'HairJoint-245c', 'Ponytail_0', 'J_Bip_L_ToeBase_end', 'J_Sec_L_LowerSleeve']) {
     assert.equal(mainBoneLabel(name), null, name);
   }
 });
@@ -88,4 +90,48 @@ test('parent scale is re-expressed in a child rotated by a quarter turn', () => 
   const quarterZ = [0, 0, Math.SQRT1_2, Math.SQRT1_2];
   close(parentScaleInChild([2, 3, 4], quarterZ), [3, 2, 4]);
   close(resolveScales([part(-1, [2, 3, 4]), part(0, [1, 1, 1], false, quarterZ)])[1], [1 / 3, 1 / 2, 1 / 4]);
+});
+
+test('zone falloff is 1 at the centre, 0 at the edge and smooth between', () => {
+  assert.equal(falloff(0, 2), 1);
+  assert.equal(falloff(2, 2), 0);
+  assert.equal(falloff(5, 2), 0);
+  assert.ok(falloff(.5, 2) > falloff(1, 2) && falloff(1, 2) > falloff(1.9, 2));
+});
+
+test('a mirrored pair of zones never pushes harder than one zone', () => {
+  const points = Float32Array.from([0, 0, 0, .5, 0, 0, -.5, 0, 0, 3, 0, 0, .9, 0, 0]);
+  const pair = pairInfluence(points, [.5, 0, 0], [-.5, 0, 0], 1);
+  assert.deepEqual([...pair.index], [0, 1, 2, 4]);
+  pair.index.forEach((_, i) => assert.ok(pair.w1[i] + pair.w2[i] <= 1 + 1e-6));
+  assert.ok(Math.abs(pair.w1[0] - pair.w2[0]) < 1e-6);          // midline: split evenly
+  assert.ok(Math.abs(pair.w1[1] + pair.w2[1] - 1) < 1e-6);       // at a centre: full strength
+  const single = pairInfluence(points, [.5, 0, 0], null, 1);
+  assert.deepEqual([...single.index], [0, 1, 4]);
+  assert.equal(single.w1[1], 1);
+  assert.equal(single.w2[1], 0);
+});
+
+test('vertex positions are rewritten in the binary chunk and stay valid', async () => {
+  const { json, rest } = parseGlb(await load());
+  const index = json.meshes.find(mesh => mesh.name === 'Corpo').primitives[0].attributes.POSITION;
+  assert.equal(positionAccessorProblem(json, index), null);
+  const accessor = json.accessors[index];
+  const view = json.bufferViews[accessor.bufferView];
+  const offset = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  const stride = view.byteStride || 12;
+  const original = new DataView(rest[0].data.buffer, rest[0].data.byteOffset);
+  const values = new Float32Array(accessor.count * 3);
+  for (let i = 0; i < values.length; i++) values[i] = original.getFloat32(offset + Math.floor(i / 3) * stride + (i % 3) * 4, true);
+  const before = Buffer.from(rest[0].data);
+  values[1] += 5;
+  const copy = structuredClone(json);
+  const bin = rest[0].data.slice();
+  writePositions(copy, bin, index, values);
+  assert.ok(Buffer.from(rest[0].data).equals(before), 'the source chunk is untouched');
+  assert.equal(copy.accessors[index].max[1], Math.fround(values[1]));
+  const out = parseGlb(buildGlb(copy, [{ type: rest[0].type, data: bin }]));
+  assert.equal(new DataView(out.rest[0].data.buffer, out.rest[0].data.byteOffset).getFloat32(offset + 4, true), Math.fround(values[1]));
+  assert.throws(() => writePositions(copy, bin, index, values.subarray(3)), /vertici/);
+  assert.match(positionAccessorProblem({ accessors: [{ type: 'VEC3', componentType: 5123 }] }, 0), /virgola/);
 });

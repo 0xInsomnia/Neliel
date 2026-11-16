@@ -12,7 +12,20 @@ edited neliel-refined.glb has zero glTF validator errors/warnings and reopens
 with the edits. Headless Chromium with software WebGL: load, sliders, tap
 picking before/after edits, front/side/back views, phone viewport, file://.
 
-Limits: bone-level proportions only, no vertex sculpting. Plain PBR preview,
+Added later the same day: bust bones listed as "Seno sx/dx"; a "Zona libera"
+mode (tap a point, set a radius, then inflate/deflate along the surface normal
+or move it, with smooth falloff and left/right symmetry) that rewrites POSITION
+accessors in a copy of the binary chunk on export; per-mesh show/hide; taps now
+pass through transparent texture areas (skirt panels had caught them).
+Checks: 28 tests pass; a zone-edited export has zero validator errors/warnings,
+an export with no zones keeps the binary chunk identical; side-view before/after
+inspected in software WebGL, plus phone viewport on the standalone file.
+Zone limits: normals and morph targets are not recomputed (shading can look
+slightly off on strong edits; face morphs inside an edited zone untested);
+symmetry mirrors across X = 0; meshes with quantized/sparse/external positions
+are skipped.
+
+Limits (bone mode): proportions only. Plain PBR preview,
 not the toon shader. No real .vrm file was tested (only the two GLBs); VRM
 spring-bone colliders are not rescaled. Not tested on a physical phone.
 Blender re-import of an exported file not checked.

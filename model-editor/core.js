@@ -100,6 +100,10 @@ const sideRules = [
 export function mainBoneLabel(name, humanoidName) {
   const source = humanoidName ?? name;
   if (fingers.test(source) || /_end$/i.test(name)) return null;
+  if (/bust|breast/i.test(name) && !/2$/.test(name)) {
+    const side = sideRules.find(([rule]) => rule.test(name));
+    return side ? `Seno ${side[1]}` : 'Seno';
+  }
   if (!humanoidName && secondary.test(name)) return null;
   const part = mainRules.find(([rule]) => rule.test(source));
   if (!part) return null;
@@ -156,4 +160,68 @@ export function resolveScales(parts) {
       ? value * part.multiplier[axis]
       : value * part.multiplier[axis] / inherited[axis]);
   });
+}
+
+// ------------------------------------------------------------ free zones
+// A zone deforms every vertex within `radius` of its centre, fading smoothly
+// to nothing at the edge so the surrounding surface stays continuous.
+export function falloff(distance, radius) {
+  if (distance >= radius) return 0;
+  const t = 1 - (distance / radius) ** 2;
+  return t * t;
+}
+
+// points: flat xyz array. Returns the affected vertices with their weight for
+// the zone (w1) and for its optional mirrored twin (w2). Where the two
+// overlap, across the body's midline, the weights are scaled down so the
+// pair never pushes harder than a single zone would.
+export function pairInfluence(points, centre, twin, radius) {
+  const index = [], w1 = [], w2 = [];
+  for (let i = 0; i < points.length; i += 3) {
+    const x = points[i], y = points[i + 1], z = points[i + 2];
+    const a = falloff(Math.hypot(x - centre[0], y - centre[1], z - centre[2]), radius);
+    const b = twin ? falloff(Math.hypot(x - twin[0], y - twin[1], z - twin[2]), radius) : 0;
+    if (a === 0 && b === 0) continue;
+    const scale = Math.max(a, b) / (a + b);
+    index.push(i / 3);
+    w1.push(a * scale);
+    w2.push(b * scale);
+  }
+  return { index: Uint32Array.from(index), w1: Float32Array.from(w1), w2: Float32Array.from(w2) };
+}
+
+// Why a POSITION accessor cannot be rewritten in place, or null if it can.
+export function positionAccessorProblem(json, accessorIndex) {
+  const accessor = json.accessors?.[accessorIndex];
+  if (!accessor) return 'accessor mancante';
+  if (accessor.type !== 'VEC3' || accessor.componentType !== 5126) return 'posizioni non in virgola mobile';
+  if (accessor.sparse) return 'accessor sparso';
+  const view = json.bufferViews?.[accessor.bufferView];
+  if (!view) return 'dati mancanti';
+  if (view.buffer !== 0 || json.buffers?.[0]?.uri !== undefined) return 'dati esterni al file';
+  return null;
+}
+
+// Overwrites the vertex positions of one accessor inside `bin` (a private
+// copy of the binary chunk) and refreshes the accessor's bounds in `json`.
+export function writePositions(json, bin, accessorIndex, values) {
+  const problem = positionAccessorProblem(json, accessorIndex);
+  if (problem) throw new Error(`Mesh non riscrivibile: ${problem}.`);
+  const accessor = json.accessors[accessorIndex];
+  if (values.length !== accessor.count * 3) throw new Error('Numero di vertici diverso dall\'originale.');
+  const view = json.bufferViews[accessor.bufferView];
+  const stride = view.byteStride || 12;
+  const start = (view.byteOffset ?? 0) + (accessor.byteOffset ?? 0);
+  const data = new DataView(bin.buffer, bin.byteOffset, bin.byteLength);
+  const min = [Infinity, Infinity, Infinity], max = [-Infinity, -Infinity, -Infinity];
+  for (let i = 0; i < accessor.count; i++) {
+    for (let axis = 0; axis < 3; axis++) {
+      const value = Math.fround(values[i * 3 + axis]);
+      data.setFloat32(start + i * stride + axis * 4, value, true);
+      if (value < min[axis]) min[axis] = value;
+      if (value > max[axis]) max[axis] = value;
+    }
+  }
+  accessor.min = min;
+  accessor.max = max;
 }
