@@ -225,3 +225,125 @@ export function writePositions(json, bin, accessorIndex, values) {
   accessor.min = min;
   accessor.max = max;
 }
+
+// Moves the vertices of one zone. `sides` holds the zone and, when mirrored,
+// its twin; each has { centre, normal, shift, widen }. `shift` is a plain
+// offset, `widen` stretches the surface sideways around the zone's axis
+// (the line through the centre along the normal) without pushing it outward.
+export function displaceZone(work, rest, { index, w1, w2 }, sides) {
+  const weights = [w1, w2];
+  sides.forEach(({ centre, normal, shift, widen }, side) => {
+    const weight = weights[side];
+    for (let i = 0; i < index.length; i++) {
+      const w = weight[i];
+      if (w === 0) continue;
+      const at = index[i] * 3;
+      let x = shift[0], y = shift[1], z = shift[2];
+      if (widen) {
+        const dx = rest[at] - centre[0], dy = rest[at + 1] - centre[1], dz = rest[at + 2] - centre[2];
+        const along = dx * normal[0] + dy * normal[1] + dz * normal[2];
+        x += widen * (dx - along * normal[0]);
+        y += widen * (dy - along * normal[1]);
+        z += widen * (dz - along * normal[2]);
+      }
+      work[at] += w * x;
+      work[at + 1] += w * y;
+      work[at + 2] += w * z;
+    }
+  });
+}
+
+// Models duplicate vertices along texture seams and between materials. They
+// must be smoothed as one point or the surface would tear open there, so
+// vertices sharing a position (across all given arrays) get one weld id.
+export function weldVertices(arrays, tolerance = 1e-5) {
+  const ids = new Map();
+  const weldOf = arrays.map(points => {
+    const out = new Uint32Array(points.length / 3);
+    for (let i = 0; i < out.length; i++) {
+      const key = `${Math.round(points[i * 3] / tolerance)},${Math.round(points[i * 3 + 1] / tolerance)},${Math.round(points[i * 3 + 2] / tolerance)}`;
+      let id = ids.get(key);
+      if (id === undefined) ids.set(key, id = ids.size);
+      out[i] = id;
+    }
+    return out;
+  });
+  return { weldOf, count: ids.size };
+}
+
+// meshes: [{ weldOf, indices }] with `indices` a triangle list (or null for
+// unindexed geometry). Returns each welded point's neighbours, CSR-packed.
+export function buildNeighbours(count, meshes) {
+  const sets = Array.from({ length: count }, () => new Set());
+  for (const { weldOf, indices } of meshes) {
+    const corners = indices ? indices.length : weldOf.length;
+    for (let i = 0; i + 2 < corners; i += 3) {
+      const a = weldOf[indices ? indices[i] : i];
+      const b = weldOf[indices ? indices[i + 1] : i + 1];
+      const c = weldOf[indices ? indices[i + 2] : i + 2];
+      if (a !== b) { sets[a].add(b); sets[b].add(a); }
+      if (b !== c) { sets[b].add(c); sets[c].add(b); }
+      if (a !== c) { sets[a].add(c); sets[c].add(a); }
+    }
+  }
+  const offsets = new Uint32Array(count + 1);
+  sets.forEach((set, i) => { offsets[i + 1] = offsets[i] + set.size; });
+  const list = new Uint32Array(offsets[count]);
+  sets.forEach((set, i) => list.set([...set], offsets[i]));
+  return { offsets, list };
+}
+
+// Relaxes the welded points `ids` towards the average of their neighbours.
+// `weights` (0–1, the zone falloff) keeps the edge of the zone anchored.
+export function smoothPoints(positions, { offsets, list }, ids, weights, strength, iterations = 6) {
+  const next = new Float32Array(ids.length * 3);
+  for (let pass = 0; pass < iterations; pass++) {
+    for (let k = 0; k < ids.length; k++) {
+      const at = ids[k] * 3;
+      const from = offsets[ids[k]], to = offsets[ids[k] + 1];
+      let x = 0, y = 0, z = 0;
+      for (let n = from; n < to; n++) {
+        x += positions[list[n] * 3];
+        y += positions[list[n] * 3 + 1];
+        z += positions[list[n] * 3 + 2];
+      }
+      const pull = to > from ? .5 * strength * weights[k] : 0;
+      const count = to - from || 1;
+      next[k * 3] = positions[at] + pull * (x / count - positions[at]);
+      next[k * 3 + 1] = positions[at + 1] + pull * (y / count - positions[at + 1]);
+      next[k * 3 + 2] = positions[at + 2] + pull * (z / count - positions[at + 2]);
+    }
+    for (let k = 0; k < ids.length; k++) positions.set(next.subarray(k * 3, k * 3 + 3), ids[k] * 3);
+  }
+}
+
+// ------------------------------------------------------------ saved edits
+// Checks a saved-edits file before it touches the model; anything malformed
+// is rejected, numbers are clamped to what the sliders allow.
+export function sanitizeState(data) {
+  const fail = () => { throw new Error('Il file non contiene modifiche valide.'); };
+  if (!data || typeof data !== 'object' || !data.parts || typeof data.parts !== 'object' || !Array.isArray(data.zones)) fail();
+  const number = (value, fallback, min = -Infinity, max = Infinity) =>
+    Number.isFinite(value) ? Math.min(max, Math.max(min, value)) : fallback;
+  const vector = (value, fallback, min, max) => Array.isArray(value) && value.length === 3
+    ? value.map((item, axis) => number(item, fallback[axis], min, max)) : [...fallback];
+  const point = value => Array.isArray(value) && value.length === 3 && value.every(Number.isFinite) ? [...value] : fail();
+  const parts = {};
+  for (const [name, part] of Object.entries(data.parts)) {
+    if (!part || typeof part !== 'object') fail();
+    parts[name] = {
+      uniform: number(part.uniform, 1, .5, 2), axes: vector(part.axes, [1, 1, 1], .5, 2),
+      offset: vector(part.offset, [0, 0, 0]), follows: Boolean(part.follows),
+    };
+  }
+  const zones = data.zones.map(zone => {
+    if (!zone || typeof zone !== 'object') fail();
+    return {
+      centre: point(zone.centre), normal: point(zone.normal), world: point(zone.world),
+      radius: number(zone.radius, NaN, 1e-6), push: number(zone.push, 0), widen: number(zone.widen, 0, -.9, 2),
+      smooth: number(zone.smooth, 0, 0, 1), offset: vector(zone.offset, [0, 0, 0]), mirror: Boolean(zone.mirror),
+    };
+  });
+  if (zones.some(zone => Number.isNaN(zone.radius))) fail();
+  return { parts, zones };
+}

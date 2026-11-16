@@ -2,7 +2,9 @@ import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
 import test from 'node:test';
 import {
-  buildGlb, falloff, humanoidBones, mainBoneLabel, mirrorName, pairInfluence, parentScaleInChild, parseGlb, patchNodes, positionAccessorProblem, resolveScales, shortName, writePositions,
+  buildGlb, buildNeighbours, displaceZone, falloff, humanoidBones, mainBoneLabel, mirrorName, pairInfluence,
+  parentScaleInChild, parseGlb, patchNodes, positionAccessorProblem, resolveScales, sanitizeState, shortName,
+  smoothPoints, weldVertices, writePositions,
 } from '../model-editor/core.js';
 
 const asset = new URL('../assets/neliel-refined.glb', import.meta.url);
@@ -134,4 +136,46 @@ test('vertex positions are rewritten in the binary chunk and stay valid', async 
   assert.equal(new DataView(out.rest[0].data.buffer, out.rest[0].data.byteOffset).getFloat32(offset + 4, true), Math.fround(values[1]));
   assert.throws(() => writePositions(copy, bin, index, values.subarray(3)), /vertici/);
   assert.match(positionAccessorProblem({ accessors: [{ type: 'VEC3', componentType: 5123 }] }, 0), /virgola/);
+});
+
+test('a zone shifts by its weight and widens only sideways to its axis', () => {
+  const rest = Float32Array.from([0, 0, 0, 1, 0, 0, 0, 0, 1]);
+  const reach = { index: Uint32Array.from([0, 1, 2]), w1: Float32Array.from([1, .5, .5]), w2: new Float32Array(3) };
+  const work = rest.slice();
+  displaceZone(work, rest, reach, [{ centre: [0, 0, 0], normal: [0, 0, 1], shift: [0, 2, 0], widen: 0 }]);
+  close([...work], [0, 2, 0, 1, 1, 0, 0, 1, 1]);
+  const wide = rest.slice();
+  displaceZone(wide, rest, reach, [{ centre: [0, 0, 0], normal: [0, 0, 1], shift: [0, 0, 0], widen: 1 }]);
+  close([...wide], [0, 0, 0, 1.5, 0, 0, 0, 0, 1]); // the point on the axis does not move
+});
+
+test('seam duplicates are welded and smoothed as one point', () => {
+  // A flat strip of two triangles pairs, with a spike at the duplicated vertex.
+  const a = Float32Array.from([0, 0, 0, 1, 0, 0, 1, 1, 5, 0, 1, 0]);
+  const b = Float32Array.from([1, 0, 0, 2, 0, 0, 2, 1, 0, 1, 1, 5]);
+  const { weldOf, count } = weldVertices([a, b]);
+  assert.equal(count, 6);
+  assert.equal(weldOf[0][1], weldOf[1][0]);
+  assert.equal(weldOf[0][2], weldOf[1][3]);
+  const quad = [0, 1, 2, 0, 2, 3];
+  const neighbours = buildNeighbours(count, [{ weldOf: weldOf[0], indices: quad }, { weldOf: weldOf[1], indices: null }]);
+  const spike = weldOf[0][2];
+  assert.ok(neighbours.offsets[spike + 1] - neighbours.offsets[spike] >= 3);
+  const positions = new Float32Array(count * 3);
+  [[a, weldOf[0]], [b, weldOf[1]]].forEach(([points, ids]) => ids.forEach((id, i) => positions.set(points.subarray(i * 3, i * 3 + 3), id * 3)));
+  smoothPoints(positions, neighbours, Uint32Array.from([spike]), Float32Array.from([1]), 1);
+  assert.ok(positions[spike * 3 + 2] < 1, 'the spike is flattened');
+  const still = positions.slice();
+  smoothPoints(positions, neighbours, Uint32Array.from([spike]), Float32Array.from([0]), 1);
+  assert.deepEqual(positions, still, 'zero weight leaves a point alone');
+});
+
+test('saved edits are validated and clamped before use', () => {
+  const zone = { centre: [0, 1, 0], normal: [0, 0, 1], world: [0, 1, 0], radius: .1, push: .02, offset: [0, 0, 0], mirror: true };
+  const clean = sanitizeState({ parts: { Head: { uniform: 9, axes: [1, 'x', 1], offset: [0, .1, 0], follows: 0 } }, zones: [zone] });
+  assert.deepEqual(clean.parts.Head, { uniform: 2, axes: [1, 1, 1], offset: [0, .1, 0], follows: false });
+  assert.deepEqual(clean.zones[0], { ...zone, widen: 0, smooth: 0 });
+  for (const bad of [null, {}, { parts: {}, zones: [{}] }, { parts: { a: 1 }, zones: [] }, { parts: {}, zones: [{ ...zone, radius: 'x' }] }]) {
+    assert.throws(() => sanitizeState(bad), /valide/);
+  }
 });

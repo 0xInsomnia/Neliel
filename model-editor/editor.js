@@ -4,8 +4,8 @@ import {
 } from '../vendor/three/three.module.min.js';
 import { GLTFLoader } from '../vendor/three/addons/loaders/GLTFLoader.js';
 import {
-  buildGlb, humanoidBones, mainBoneLabel, mirrorName, pairInfluence, parseGlb, patchNodes, positionAccessorProblem,
-  resolveScales, shortName, writePositions,
+  buildGlb, buildNeighbours, displaceZone, humanoidBones, mainBoneLabel, mirrorName, pairInfluence, parseGlb, patchNodes,
+  positionAccessorProblem, resolveScales, sanitizeState, shortName, smoothPoints, weldVertices, writePositions,
 } from './core.js';
 
 const $ = id => document.getElementById(id);
@@ -263,6 +263,7 @@ async function open(name, buffer) {
   buildSliders();
   $('controls').disabled = false;
   $('views').hidden = false;
+  $('tools').hidden = false;
   status.hidden = true;
   const extension = name.split('.').pop().toLowerCase();
   $('export-note').textContent = `Il file esportato (.${extension}) mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa modificate e la forma delle zone ritoccate.`;
@@ -272,6 +273,9 @@ async function open(name, buffer) {
   refreshZones();
   setMode(mode);
   buildLayers(gltf, json, root);
+  history = [JSON.stringify(snapshot())];
+  cursor = 0;
+  showHistory();
 }
 
 // ----------------------------------------------------------------- edits
@@ -328,8 +332,9 @@ function addSlider(host, context, { label, min, max, step, read, write, format }
     input.value = read(context.get());
   };
   input.oninput = () => set(Number(input.value));
-  minus.onclick = () => set(Math.round((read(context.get()) - step) / step) * step);
-  plus.onclick = () => set(Math.round((read(context.get()) + step) / step) * step);
+  input.onchange = commit;
+  minus.onclick = () => { set(Math.round((read(context.get()) - step) / step) * step); commit(); };
+  plus.onclick = () => { set(Math.round((read(context.get()) + step) / step) * step); commit(); };
   host.append(wrap);
   context.sliders.push({ refresh(part) {
     labelNode.textContent = typeof label === 'function' ? label(part) : label;
@@ -468,17 +473,128 @@ $('parent').onclick = () => select(model.parts[current].parent);
 $('mirror').onchange = () => select(current);
 $('follows').onchange = () => {
   edit(part => { part.follows = $('follows').checked; });
+  commit();
 };
 const clear = part => Object.assign(part, { uniform: 1, axes: [1, 1, 1], offset: [0, 0, 0], follows: !part.main });
-$('reset-part').onclick = () => { edit(clear); select(current); };
+$('reset-part').onclick = () => { edit(clear); select(current); commit(); };
 $('reset-all').onclick = () => {
   if (!confirm('Annullare tutte le modifiche al modello?')) return;
+  setState({ parts: {}, zones: [] });
+  refreshEditors();
+  commit();
+};
+
+// ------------------------------------------------- history, saved edits
+// Every edit lives in a small plain object (changed bones by name, plus the
+// zones), which is what undo steps, the saved-edits file and the before/after
+// comparison all pass around.
+const untouched = part => part.uniform === 1 && part.axes.every(axis => axis === 1)
+  && !part.offset.some(Boolean) && part.follows === !part.main;
+const snapshot = () => ({
+  parts: Object.fromEntries(model.parts.filter(part => !untouched(part)).map(part =>
+    [part.name, { uniform: part.uniform, axes: [...part.axes], offset: [...part.offset], follows: part.follows }])),
+  zones: model.zones.map(({ cache, ...zone }) => structuredClone(zone)),
+});
+
+// Returns how many saved bones this model does not have.
+function setState(state) {
+  let missing = 0;
   model.parts.forEach(clear);
-  model.zones = [];
+  for (const [name, saved] of Object.entries(state.parts)) {
+    const part = model.parts[model.byName.get(name)];
+    if (part) Object.assign(part, structuredClone(saved));
+    else missing++;
+  }
+  model.zones = state.zones.map(zone => ({ ...structuredClone(zone), cache: null }));
   apply();
   applyZones();
+  return missing;
+}
+
+function refreshEditors() {
   select(current);
   refreshZones();
+}
+
+let history = [];
+let cursor = 0;
+function showHistory() {
+  $('undo').disabled = cursor <= 0;
+  $('redo').disabled = cursor >= history.length - 1;
+}
+function commit() {
+  const state = JSON.stringify(snapshot());
+  if (state === history[cursor]) return;
+  history.splice(cursor + 1, Infinity, state);
+  if (history.length > 100) history.shift();
+  cursor = history.length - 1;
+  showHistory();
+}
+function travel(step) {
+  if (!model || held || !history[cursor + step]) return;
+  cursor += step;
+  setState(JSON.parse(history[cursor]));
+  refreshEditors();
+  showHistory();
+}
+$('undo').onclick = () => travel(-1);
+$('redo').onclick = () => travel(1);
+addEventListener('keydown', event => {
+  if (!(event.ctrlKey || event.metaKey) || /^(INPUT|SELECT|TEXTAREA)$/.test(event.target.tagName) && event.target.type !== 'range') return;
+  const key = event.key.toLowerCase();
+  if (key !== 'z' && key !== 'y') return;
+  event.preventDefault();
+  travel(key === 'y' || event.shiftKey ? 1 : -1);
+});
+
+// Hold to see the untouched model, release to get the edits back.
+let held = null;
+function compare(on) {
+  if (!model || on === Boolean(held)) return;
+  if (on) {
+    held = snapshot();
+    setState({ parts: {}, zones: [] });
+    for (const item of [marker, ...reach]) item.visible = false;
+  } else {
+    setState(held);
+    held = null;
+    refreshEditors();
+  }
+}
+$('compare').addEventListener('pointerdown', event => { event.preventDefault(); compare(true); });
+for (const type of ['pointerup', 'pointercancel', 'blur']) addEventListener(type, () => compare(false));
+$('compare').addEventListener('keydown', event => { if (event.key === ' ' || event.key === 'Enter') compare(true); });
+$('compare').addEventListener('keyup', () => compare(false));
+$('compare').addEventListener('contextmenu', event => event.preventDefault());
+
+function download(blob, name) {
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = name;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+}
+const stem = () => model.name.slice(0, model.name.lastIndexOf('.'));
+
+$('preset-save').onclick = () => {
+  const file = { app: 'neliel-model-editor', version: 1, model: model.name, ...snapshot() };
+  download(new Blob([JSON.stringify(file, null, 1)], { type: 'application/json' }), `${stem()}-modifiche.json`);
+};
+$('preset-file').onchange = async event => {
+  const [file] = event.target.files;
+  event.target.value = '';
+  if (!file || !model) return;
+  const note = $('preset-note');
+  try {
+    const missing = setState(sanitizeState(JSON.parse(await file.text())));
+    refreshEditors();
+    commit();
+    note.textContent = `Modifiche caricate da ${file.name}.`
+      + (missing ? ` ${missing} parti del file non esistono in questo modello e sono state ignorate.` : '');
+  } catch (error) {
+    console.error(error);
+    note.textContent = `Non riesco a caricare ${file.name}: ${error instanceof SyntaxError ? 'non è un file di modifiche.' : error.message}`;
+  }
 };
 
 $('export').onclick = () => {
@@ -496,16 +612,11 @@ $('export').onclick = () => {
   const reshaped = [...model.targets.values()].filter(target => target.changed);
   if (reshaped.length) {
     const bin = rest[0].data.slice();
-    for (const target of reshaped) writePositions(json, bin, target.accessor, target.work);
+    for (const target of reshaped) writePositions(json, bin, target.accessor, target.local);
     rest = [{ type: rest[0].type, data: bin }, ...rest.slice(1)];
   }
-  const buffer = buildGlb(json, rest);
-  const dot = model.name.lastIndexOf('.');
-  const link = document.createElement('a');
-  link.href = URL.createObjectURL(new Blob([buffer], { type: 'model/gltf-binary' }));
-  link.download = `${model.name.slice(0, dot)}-modificato${model.name.slice(dot)}`;
-  link.click();
-  setTimeout(() => URL.revokeObjectURL(link.href), 60_000);
+  download(new Blob([buildGlb(json, rest)], { type: 'model/gltf-binary' }),
+    `${stem()}-modificato${model.name.slice(model.name.lastIndexOf('.'))}`);
 };
 
 // ------------------------------------------------------------------ zones
@@ -544,52 +655,96 @@ function buildTargets(gltf, json, root) {
       point.fromBufferAttribute(attribute, i).toArray(base, i * 3);
       point.applyMatrix4(toCommon).toArray(common, i * 3);
     }
+    // `work` holds the edited positions in common space; `local` is the same
+    // in the mesh's own space, which is what gets drawn and exported.
     targets.set(attribute, {
-      attribute, accessor, base, common, work: base.slice(), changed: false, geometries: new Set([mesh.geometry]),
+      attribute, accessor, base, common, work: common.slice(), local: base.slice(), changed: false,
+      geometries: new Set([mesh.geometry]), plain: base.every((value, i) => value === common[i]),
       toCommon: new Matrix3().setFromMatrix4(toCommon), toLocal: new Matrix3().setFromMatrix4(toCommon).invert(),
     });
   });
   return { targets, skipped };
 }
 
-const idle = zone => !zone.push && !zone.offset.some(Boolean);
+const idle = zone => !zone.push && !zone.widen && !zone.smooth && !zone.offset.some(Boolean);
 const flipX = ([x, y, z]) => [-x, y, z];
 const zoneTwin = zone => zone.mirror
   ? { centre: flipX(zone.centre), normal: flipX(zone.normal), offset: flipX(zone.offset), world: flipX(zone.world) } : null;
 
+// Built on first use: which vertices coincide and who neighbours whom.
+function smoothing() {
+  if (model.weld) return model.weld;
+  const targets = [...model.targets.values()];
+  const { weldOf, count } = weldVertices(targets.map(target => target.common));
+  targets.forEach((target, i) => { target.weldOf = weldOf[i]; });
+  const meshes = targets.flatMap(target => [...target.geometries].map(geometry =>
+    ({ weldOf: target.weldOf, indices: geometry.index?.array ?? null })));
+  return model.weld = { neighbours: buildNeighbours(count, meshes), positions: new Float32Array(count * 3) };
+}
+
+function smoothZone(zone) {
+  const { neighbours, positions } = smoothing();
+  const strength = new Map();
+  for (const target of model.targets.values()) {
+    const { work, weldOf } = target;
+    for (let i = 0; i < weldOf.length; i++) positions.set(work.subarray(i * 3, i * 3 + 3), weldOf[i] * 3);
+    const { index, w1, w2 } = zone.cache.get(target);
+    for (let i = 0; i < index.length; i++) {
+      const id = weldOf[index[i]];
+      strength.set(id, Math.max(strength.get(id) ?? 0, Math.min(1, w1[i] + w2[i])));
+    }
+  }
+  smoothPoints(positions, neighbours, Uint32Array.from(strength.keys()), Float32Array.from(strength.values()), zone.smooth);
+  for (const target of model.targets.values()) {
+    const { index } = zone.cache.get(target);
+    for (let i = 0; i < index.length; i++) {
+      const from = target.weldOf[index[i]] * 3;
+      target.work.set(positions.subarray(from, from + 3), index[i] * 3);
+    }
+    if (index.length) target.changed = true;
+  }
+}
+
 function applyZones() {
-  const shift = zone => new Vector3(...zone.normal).multiplyScalar(zone.push).add(new Vector3(...zone.offset));
+  const side = (place, zone) => ({
+    centre: place.centre, normal: place.normal, widen: zone.widen,
+    shift: place.normal.map((value, axis) => value * zone.push + place.offset[axis]),
+  });
   for (const target of model.targets.values()) {
     target.stale = target.changed;
     target.changed = false;
-    if (target.stale) target.work.set(target.base);
+    if (target.stale) target.work.set(target.common);
   }
   for (const zone of model.zones) {
     if (idle(zone)) continue;
     const twin = zoneTwin(zone);
+    const sides = twin ? [side(zone, zone), side(twin, zone)] : [side(zone, zone)];
     zone.cache ??= new Map();
     for (const target of model.targets.values()) {
       let reachOf = zone.cache.get(target);
       if (!reachOf) zone.cache.set(target, reachOf = pairInfluence(target.common, zone.centre, twin?.centre ?? null, zone.radius));
-      const { index, w1, w2 } = reachOf;
-      if (!index.length) continue;
-      const [ax, ay, az] = shift(zone).applyMatrix3(target.toLocal).toArray();
-      const [bx, by, bz] = twin ? shift({ ...twin, push: zone.push }).applyMatrix3(target.toLocal).toArray() : [0, 0, 0];
-      const { work } = target;
-      for (let i = 0; i < index.length; i++) {
-        const at = index[i] * 3;
-        work[at] += w1[i] * ax + w2[i] * bx;
-        work[at + 1] += w1[i] * ay + w2[i] * by;
-        work[at + 2] += w1[i] * az + w2[i] * bz;
-      }
+      if (!reachOf.index.length) continue;
+      displaceZone(target.work, target.common, reachOf, sides);
       target.changed = true;
     }
+    if (zone.smooth) smoothZone(zone);
   }
+  const delta = new Vector3();
   for (const target of model.targets.values()) {
     if (!target.changed && !target.stale) continue;
-    const { attribute, work } = target;
-    if (!attribute.isInterleavedBufferAttribute && attribute.array instanceof Float32Array) attribute.array.set(work);
-    else for (let i = 0; i < attribute.count; i++) attribute.setXYZ(i, work[i * 3], work[i * 3 + 1], work[i * 3 + 2]);
+    const { attribute, work, common, base, local } = target;
+    if (target.plain) local.set(work);
+    else {
+      // Carry only the change across, so untouched vertices stay bit-exact.
+      for (let i = 0; i < work.length; i += 3) {
+        delta.set(work[i] - common[i], work[i + 1] - common[i + 1], work[i + 2] - common[i + 2]).applyMatrix3(target.toLocal);
+        local[i] = base[i] + delta.x;
+        local[i + 1] = base[i + 1] + delta.y;
+        local[i + 2] = base[i + 2] + delta.z;
+      }
+    }
+    if (!attribute.isInterleavedBufferAttribute && attribute.array instanceof Float32Array) attribute.array.set(local);
+    else for (let i = 0; i < attribute.count; i++) attribute.setXYZ(i, local[i * 3], local[i * 3 + 1], local[i * 3 + 2]);
     (attribute.data ?? attribute).needsUpdate = true;
     for (const geometry of target.geometries) geometry.boundingSphere = geometry.boundingBox = null;
   }
@@ -633,7 +788,7 @@ function refreshZones() {
   zoneSelect.replaceChildren(...model.zones.map((_, i) => new Option(`Zona ${i + 1}`, i)));
   $('zone-hint').textContent = 'Tocca il modello nel punto da modificare: la zona è il cerchio chiaro attorno al punto.'
     + (model.skipped ? ` ${model.skipped} mesh di questo file non sono modificabili a zone.` : '');
-  selectZone(Math.min(zoneIndex, model.zones.length - 1));
+  selectZone(zoneIndex < 0 ? model.zones.length - 1 : Math.min(zoneIndex, model.zones.length - 1));
 }
 
 let wantNewZone = false;
@@ -663,11 +818,15 @@ function pickZone(hit) {
   const zone = model.zones[zoneIndex];
   if (zone && idle(zone) && !wantNewZone) Object.assign(zone, place);
   else {
-    model.zones.push({ ...place, radius: zone?.radius ?? defaultRadius(), push: 0, offset: [0, 0, 0], mirror: $('zone-mirror').checked });
+    model.zones.push({
+      ...place, radius: zone?.radius ?? defaultRadius(), push: 0, widen: 0, smooth: 0, offset: [0, 0, 0],
+      mirror: $('zone-mirror').checked,
+    });
     zoneIndex = model.zones.length - 1;
   }
   wantNewZone = false;
   refreshZones();
+  commit();
 }
 
 const defaultRadius = () => Number((view.size * .05).toPrecision(2));
@@ -683,6 +842,14 @@ function buildZoneSliders() {
   addSlider($('zone-sliders'), zoneContext, {
     label: 'Gonfia / sgonfia', min: -unit * 6, max: unit * 6, step: unit / 20, format: centimetres,
     read: zone => zone.push, write: (zone, value) => { zone.push = value; },
+  });
+  addSlider($('zone-sliders'), zoneContext, {
+    label: 'Allarga / stringi', min: -.5, max: .5, step: .01, format: value => `${value > 0 ? '+' : ''}${Math.round(value * 100)}%`,
+    read: zone => zone.widen, write: (zone, value) => { zone.widen = value; },
+  });
+  addSlider($('zone-sliders'), zoneContext, {
+    label: 'Liscia', min: 0, max: 1, step: .05, format: percent,
+    read: zone => zone.smooth, write: (zone, value) => { zone.smooth = value; },
   });
   // "Forward" follows the way the model faces, which differs between files.
   const moves = [['Su / giù', 1, 1], ['Destra / sinistra', 0, 1], ['Avanti / indietro', 2, view.front]];
@@ -715,6 +882,7 @@ $('zone-delete').onclick = () => {
   model.zones.splice(zoneIndex, 1);
   applyZones();
   refreshZones();
+  commit();
 };
 $('zone-mirror').onchange = () => {
   const zone = model.zones[zoneIndex];
@@ -723,6 +891,7 @@ $('zone-mirror').onchange = () => {
   zone.cache = null;
   applyZones();
   showZone();
+  commit();
 };
 
 // One checkbox per mesh, so hair or clothes can be hidden to reach what

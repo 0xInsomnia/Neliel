@@ -25,6 +25,16 @@ slightly off on strong edits; face morphs inside an edited zone untested);
 symmetry mirrors across X = 0; meshes with quantized/sparse/external positions
 are skipped.
 
+Added after that: undo/redo (buttons and Ctrl+Z/Y, 100 steps), hold-to-compare
+with the original, save/load of the edits as a JSON file (validated on load),
+and two zone sliders: "Allarga / stringi" (sideways stretch around the zone
+axis) and "Liscia" (Laplacian smoothing on welded vertices so seams stay shut).
+Checks: 31 tests pass; in software WebGL undo returns to pixel-identical
+original, compare restores pixel-identical edits, a save/reset/load round trip
+gives a byte-identical export, and that export has zero validator
+errors/warnings. Smoothing was inspected on one glute zone only; saved zones
+are positions on the original mesh, so they only fit the same source model.
+
 Limits (bone mode): proportions only. Plain PBR preview,
 not the toon shader. No real .vrm file was tested (only the two GLBs); VRM
 spring-bone colliders are not rescaled. Not tested on a physical phone.

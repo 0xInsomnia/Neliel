@@ -22,7 +22,10 @@ body{margin:0;min-height:100svh;background:radial-gradient(ellipse at 50% -10%,#
 .status.error{color:#ffb4c4}
 .views{position:absolute;right:10px;top:10px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
 .views button{padding:7px 10px;font-size:12px;background:#1b1430cc}
-.chip{position:absolute;left:12px;bottom:12px;margin:0;padding:6px 11px;border-radius:50px;font-size:12px;background:#1b1430cc;border:1px solid var(--line);pointer-events:none}
+.tools{position:absolute;right:10px;bottom:10px;display:flex;gap:6px}
+.tools button{padding:6px 12px;font-size:13px;min-height:38px;background:#1b1430cc;touch-action:none;user-select:none;-webkit-user-select:none}
+.tools button:active{background:#7d4bc4}
+.chip{max-width:calc(100% - 215px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;position:absolute;left:12px;bottom:12px;margin:0;padding:6px 11px;border-radius:50px;font-size:12px;background:#1b1430cc;border:1px solid var(--line);pointer-events:none}
 .panel{overflow-y:auto;display:flex;flex-direction:column;gap:12px;min-height:0;padding-bottom:4px}
 section{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:13px 14px}
 h2{margin:0 0 10px;font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);font-weight:650}
@@ -69,6 +72,11 @@ fieldset:disabled section{opacity:.5}
       <button type="button" data-view="back">Retro</button>
     </div>
     <p class="chip" id="chip" hidden></p>
+    <div class="tools" id="tools" hidden>
+      <button type="button" id="undo" aria-label="Annulla" title="Annulla" disabled>↶</button>
+      <button type="button" id="redo" aria-label="Ripeti" title="Ripeti" disabled>↷</button>
+      <button type="button" id="compare" title="Tieni premuto per vedere l'originale">Originale</button>
+    </div>
   </div>
   <div class="panel">
     <section>
@@ -132,6 +140,11 @@ fieldset:disabled section{opacity:.5}
           <button type="button" id="reset-all">Azzera tutto</button>
           <button type="button" id="export" class="accent">Esporta modello</button>
         </div>
+        <div class="row" style="margin-top:8px">
+          <button type="button" id="preset-save">Salva modifiche</button>
+          <label class="file">Carica modifiche<input type="file" id="preset-file" accept=".json,application/json"></label>
+        </div>
+        <p class="small" id="preset-note">«Salva modifiche» crea un piccolo file per riprendere il lavoro più tardi sullo stesso modello originale. Tieni premuto «Originale» sulla vista per confrontare prima e dopo.</p>
         <p class="small" id="export-note">Il file esportato mantiene materiali, rig ed espressioni dell'originale: cambiano solo le ossa modificate e la forma delle zone ritoccate.</p>
       </section>
     </fieldset>
