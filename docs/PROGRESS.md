@@ -1,3 +1,24 @@
+# Camminata senza zoppia — 19 novembre 2026
+
+Segnalazione dell'utente: in `walk_normal` il personaggio sembrava zoppicare.
+Misura: piegamento delle ginocchia identico alla mocap, ma bacino 3 cm più alto
+sull'appoggio destro e 2,5 cm più basso sul sinistro. Causa: piedi calibrati al
+fotogramma 0, in cui il piede sinistro è sollevato a metà passo; da appoggiato
+restava col tallone giù di 8° (caviglia a 49 mm) e il destro sulle punte
+(73 mm). Anche altre clip avevano piedi inclinati di 6–19°.
+
+`retarget.py` ora calibra ogni piede nel fotogramma di appoggio (`planted_frame`)
+e porta a terra l'avampiede quando lo è nella mocap (`ball_contact`).
+
+Verifiche: bacino in appoggio sinistro/destro 890/891 mm in `walk_normal`
+(894/895 in `walk_feminine`); prima il piede sinistro non toccava mai terra.
+Piedi appoggiati piatti entro 2° nelle clip in piedi; nelle clip `feminine` il
+piede sinistro poggia sull'avampiede (tallone alzato 15–21°) e tocca terra.
+Busto, mani e piedi coincidono col retarget; capelli invariati (coda 0%
+compenetrazione). Video di profilo prima/dopo e vista 3/4 delle camminate.
+
+---
+
 # Postura e fisica dei capelli per le clip Bandai — 19 novembre 2026
 
 Segnalazione dell'utente: nella camminata seno e glutei sembravano cadere, e i

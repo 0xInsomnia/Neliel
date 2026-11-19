@@ -89,6 +89,16 @@ clip viene girata attorno alla verticale perché al fotogramma 0 il bacino guard
 avanti: nelle clip `feminine` l'attrice parte girata di 30–50° e prima gli arti
 restavano girati rispetto al busto.
 
+Piedi: ogni piede è calibrato in un fotogramma in cui la mocap lo ha appoggiato
+(avampiede a terra e, se mai succede, anche il tallone), piatto come a riposo e
+girato come il piede dell'attrice. Prima la calibrazione al fotogramma 0
+copiava l'angolo di un piede sollevato (`walk_normal` parte a metà passo): un
+piede restava col tallone giù, l'altro sulle punte, e il bacino saliva e
+scendeva in modo asimmetrico (zoppia). Un piede che non poggia mai il tallone
+(stile `feminine`) tiene l'inclinazione rispetto a un piede piatto della stessa
+attrice; se nella mocap l'avampiede è a terra, il piede viene ruotato attorno
+alla caviglia finché tocca il pavimento (`ball_contact`).
+
 ## Limiti noti
 
 - Catene IK di 3 ossa con l'osso centrale corto (`Elbow`, `Knee`): gomito e
