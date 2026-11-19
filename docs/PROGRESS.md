@@ -1,3 +1,46 @@
+# Postura e fisica dei capelli per le clip Bandai — 19 novembre 2026
+
+Segnalazione dell'utente: nella camminata seno e glutei sembravano cadere, e i
+capelli entravano nel corpo. Causa misurata: già al fotogramma 0 il retarget
+ruotava il bacino indietro di 7–10°, il torace in avanti di 14–20° e la testa
+indietro di 20–35°, allineando le ossa alla colonna della mocap. In più le clip
+`feminine` partono con l'attrice girata di 30–50°: il busto veniva raddrizzato
+ma gli arti no.
+
+Correzioni in `tools/blender/bandai`:
+
+- `retarget.py`: bacino, schiena, collo e testa tengono la posa di riposo al
+  fotogramma 0 (`KEEP_REST`) e ricevono solo il movimento successivo; la clip
+  viene girata perché il bacino guardi avanti al fotogramma 0. Torsione massima
+  di coscia scesa da 62° a 28°, del braccio da 108° a 58°.
+- `hair_physics.py`: fisica calcolata e salvata come chiavi sulle catene MMD
+  (coda `Bip31`–`Bip42`, ciocche `Bip29/36/37`, `Bip30/38/39`). Leve fino al
+  fondo reale della mesh (allungata da shape key), inerzia con smorzamento
+  relativo, gravità vera con la forma di riposo come equilibrio, collisioni con
+  `Body` e `head`.
+- `apply_bandai.py`: alle Action già presenti ("Prova") una chiave col valore
+  originale per i 259 canali animati solo dalle clip, così cambiando Action non
+  restano pose residue.
+
+Verifiche (bpy 4.3.0; un passaggio anche con 5.3.0):
+
+- Busto, collo, testa, mani e piedi entro 0,7° dal retarget; gomiti e
+  ginocchia entro 1,9 cm.
+- Punti centrali dei capelli dentro il corpo, rigidi → con fisica: coda da
+  0–57% dei fotogrammi (fino a 69 mm) a 0% in tutte le 12 clip; ciocche da
+  5–97% a 0%, tranne `walk_feminine` 13% (fino a 22 mm, contro la spalla).
+- Oscillazione della coda al massimo 67°, salti fino a 12° tra fotogrammi.
+- "Prova" dopo aver riprodotto una clip: pose identiche all'originale (scarto
+  massimo 5e-5).
+- Render Workbench di tutte le clip (fronte, profilo, retro) e video di 4 clip.
+
+Limiti: collisioni solo sull'asse delle ciocche (bordi larghi della coda
+possono ancora sfiorare il corpo), nessuna collisione tra capelli o con i
+vestiti; nell'inchino la coda cade solo in parte (base irrigidita perché torni
+dietro la schiena). Da verificare nel Blender dell'utente con lo shading EEVEE.
+
+---
+
 # Clip Bandai Namco sul rig Blender "Jean" — 19 novembre 2026
 
 Nuovo `tools/blender/bandai/apply_bandai.py` (dettagli e uso nel README della

@@ -100,4 +100,7 @@ restavano girati rispetto al busto.
   l'appoggio.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
   ciocche, nessuna collisione tra capelli o con i vestiti; in `walk_feminine`
-  le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2 cm).
+  le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2,2 cm).
+- Nell'inchino la coda cade solo in parte: la base (`Bip40`) è più rigida
+  perché, rialzandosi, la coda torni dietro la schiena invece di restare sulla
+  spalla.

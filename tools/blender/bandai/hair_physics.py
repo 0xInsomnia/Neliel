@@ -6,8 +6,9 @@ shorter than the hair they drive), with:
 
 - inertia and drag (the hair lags and swings after head/body motion),
 - a spring back to the rest shape carried by the parent bone,
-- gravity measured relative to the rest pose, so an upright head keeps the modelled
-  shape and a bowed head lets the hair hang,
+- real gravity, minus the small part that would bend the modelled rest shape (carried
+  with the head): an upright head keeps the modelled shape, displaced hair falls back
+  and a bowed head lets the hair hang,
 - collisions with the deformed body and head surfaces (nearest vertex + normal).
 
 The result is keyed as rotations of the hair bones in the Action, like every other
@@ -23,9 +24,9 @@ from mathutils import Matrix, Quaternion, kdtree
 # collision radius (m, armature space).  Lower stiffness = looser hair.
 CHAINS = {
     'coda': [('Bip31', 300.0, 0.03, 1.0, 0.0),
-             ('Bip40', 18.0, 0.025, 1.0, 0.035),
-             ('Bip41', 10.0, 0.025, 1.0, 0.035),
-             ('Bip42', 8.0, 0.025, 1.0, 0.03)],
+             ('Bip40', 60.0, 0.03, 1.0, 0.035),
+             ('Bip41', 15.0, 0.025, 1.0, 0.035),
+             ('Bip42', 10.0, 0.025, 1.0, 0.03)],
     'ciocca destra': [('Bip29', 600.0, 0.2, 0.3, 0.012),
                       ('Bip36', 500.0, 0.2, 0.3, 0.012),
                       ('Bip37', 400.0, 0.2, 0.3, 0.012)],
@@ -163,6 +164,14 @@ class HairSim:
         self.lever_local = {b: np.linalg.inv(self.rest[b]) @ np.append(lever_pts[b], 1.0) for b in bones}
         self.surface = _Surface(arm)
         self.radius = {}
+        # gravity component that is tangential to each lever at rest: removed (carried
+        # with the bone) so the rest shape is the equilibrium of an upright head
+        self.g_rest = {}
+        for b in bones:
+            head = self.rest[b][:3, 3]
+            u = (self.rest[b] @ self.lever_local[b])[:3] - head
+            u /= np.linalg.norm(u)
+            self.g_rest[b] = self.g - np.dot(self.g, u) * u
 
     # -- helpers
     def _carried(self, parent_pose, parent, b):
@@ -227,7 +236,7 @@ class HairSim:
                             xp[b] = target.copy()
                             tp[b] = target.copy()
                         Rh = C[:3, :3] @ self.rest[b][:3, :3].T
-                        g_eff = gf * (self.g - Rh @ self.g)
+                        g_eff = gf * (self.g - Rh @ self.g_rest[b])
                         # displacement per substep; drag acts on the motion relative to the
                         # carried target, so steady walking adds no lag but accelerations swing
                         vt = target - tp[b]
