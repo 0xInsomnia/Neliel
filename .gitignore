@@ -4,3 +4,8 @@ node_modules/
 __pycache__/
 *.pyc
 .DS_Store
+
+# Blender working files and licensed motion data stay local
+*.blend
+*.blend1
+tools/blender/bandai/bvh/
