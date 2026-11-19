@@ -1,3 +1,42 @@
+# Clip Bandai Namco sul rig Blender "Jean" — 19 novembre 2026
+
+Nuovo `tools/blender/bandai/apply_bandai.py` (dettagli e uso nel README della
+cartella). Applica le 12 clip BVH come Action del rig `Jean`, una per clip,
+con chiavi sui controlli: `Torso`, `tweak_spine*`, collo e testa, clavicole,
+`HandIK`/`ElbowIK`, `FootIK`/`KneeIK`, dita dei piedi, torsione degli
+avambracci. Salva solo in una copia, a 30 fps; la Action "Prova" dell'utente
+riceve il fake user. Il `.blend` e i BVH (CC BY-NC) restano fuori dal repository.
+
+Esame del rig, in sola lettura: busto comandato da Copy Transforms dei
+`tweak_spine`, braccia e gambe con IK sempre attivo (catene di 3 ossa), nessuno
+switch IK/FK per gli arti. Corretto `retarget.py`: `ThighTwist` non seguiva la
+coscia mappata, quindi ginocchio e tibia restavano rigidi col bacino (fino a
+9,5 cm di scarto).
+
+Verifiche eseguite con bpy 4.3.0 (versione del file) e 5.3.0 (Action con slot):
+
+- Valutazione di ogni fotogramma di tutte le clip contro il retarget: busto,
+  collo, testa, clavicole, mani, piedi entro 0,4° e 0,1 mm. Gomiti, ginocchia,
+  avambracci entro 1,9 cm; braccio e coscia hanno direzione entro pochi gradi
+  ma torsione diversa dal retarget (fino a 108°/62°), decisa dal piano di
+  piegatura dell'IK.
+- Torsione del polso rispetto all'avambraccio: da 45–103° a 0–30° dopo le
+  chiavi di pronazione (10% e 60%, come lo switch `Hand_control=0` del rig).
+- Nessun salto oltre 27° tra fotogrammi consecutivi; scivolamento dei piedi
+  appoggiati 1–3,5 cm.
+- Render Workbench (Mesa, senza GPU) di 4 fotogrammi per clip da fronte,
+  profilo e retro. Non certifica lo shading EEVEE/toon del file.
+- Checksum del `.blend` originale invariato; `npm test`: 16 test passati.
+
+Limiti: capelli senza fisica che attraversano braccia e busto; in particolare
+la coda attraversa la schiena e spunta sulla pancia in `walk_normal` e
+`bow_normal`, perché la postura della mocap è più eretta del riposo. Dita ferme,
+mani che si sovrappongono al corpo nell'inchino, piedi non bloccati a terra,
+gomito/ginocchio fino a 2 cm fuori posto per l'osso centrale corto delle
+catene IK. Da verificare in Blender 4.3 dell'utente con il suo shading.
+
+---
+
 # Integrity recovery — 9 November 2026
 
 The previously published revision 06 in `50e3ff2` was truncated to 16,384
