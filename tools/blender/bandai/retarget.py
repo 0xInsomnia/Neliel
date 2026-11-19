@@ -24,6 +24,12 @@ for s, S_ in (('l', 'L'), ('r', 'R')):
         f'{s}Toe': (f'Toes_{S_}', None),
     })
 
+# Torso bones keep the rig's rest posture at the calibration frame: aligning them to the
+# mocap segment directions bent the pelvis back, the chest forward and the head back
+# (the mocap spine curve differs from the character's).  Only the motion relative to the
+# calibration frame is transferred to them.
+KEEP_REST = ('DEF-spine', 'abdomenLower', 'chestLower', 'neckLower', 'head')
+
 
 def logical_parents(bones):
     idx = {b['name']: i for i, b in enumerate(bones)}
@@ -81,7 +87,7 @@ def rot_between(a, b):
     return np.eye(3) + vx + vx @ vx / (1 + c)
 
 
-def retarget(bones, bvh_path, ref_frame=0, foot_bones=None):
+def retarget(bones, bvh_path, ref_frame=0, foot_bones=None, keep_rest=KEEP_REST, face_forward=True):
     joints, data, ft = load_bvh(bvh_path)
     Rs, Ps = fk(joints, data)
     names = [j['name'] for j in joints]
@@ -89,6 +95,15 @@ def retarget(bones, bvh_path, ref_frame=0, foot_bones=None):
     # to blender space, meters
     G = np.einsum('ij,fkjl,ml->fkim', C, Rs, C)
     P = np.einsum('ij,fkj->fki', C, Ps) * 0.01
+    if face_forward:
+        # Turn the whole clip about the vertical so the hips face forward (-Y) at the
+        # calibration frame.  Several clips start with the body turned 30-50 degrees,
+        # which left the torso facing forward and the limbs turned.
+        L = P[ref_frame, names.index('UpperLeg_L')] - P[ref_frame, names.index('UpperLeg_R')]
+        a = -np.arctan2(L[1], L[0])
+        Y = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
+        G = np.einsum('ij,fkjl->fkil', Y, G)
+        P = np.einsum('ij,fkj->fki', Y, P)
 
     idx = {b['name']: i for i, b in enumerate(bones)}
     lp, order = logical_parents(bones)
@@ -109,7 +124,7 @@ def retarget(bones, bvh_path, ref_frame=0, foot_bones=None):
             Rcarry = Rrest[i]
         if i in mapped:
             s, c = mapped[i]
-            if c is not None:
+            if c is not None and bones[i]['name'] not in keep_rest:
                 d0 = P[ref_frame, c] - P[ref_frame, s]
                 if np.linalg.norm(d0) > 1e-6:
                     Rcarry = rot_between(Rcarry[:, 1], d0) @ Rcarry

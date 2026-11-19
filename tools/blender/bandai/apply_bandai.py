@@ -40,6 +40,7 @@ HERE = _script_dir()
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
 from retarget import retarget  # noqa: E402  (bvh.py and retarget.py live next to this script)
+import hair_physics  # noqa: E402
 
 ARM_NAME = 'Jean'
 FPS = 30
@@ -76,6 +77,7 @@ def parse_args():
     ap.add_argument('--clips', default='', help='comma separated clip names (default: all 12)')
     ap.add_argument('--verify', action='store_true', help='evaluate every frame and print errors')
     ap.add_argument('--compress', action='store_true', help='save the output compressed')
+    ap.add_argument('--no-hair', action='store_true', help='skip the baked hair physics')
     a = ap.parse_args(argv)
     a.clips = [c for c in a.clips.split(',') if c] or DEFAULT_CLIPS
     return a
@@ -256,7 +258,7 @@ def new_action(arm, name):
     return act
 
 
-def key_basis(arm, act, basis, F):
+def key_basis(arm, act, basis, F, keyed=None):
     frames = np.arange(1, F + 1, dtype=np.float32)
     for bname, B in basis.items():
         pb = arm.pose.bones[bname]
@@ -269,6 +271,40 @@ def key_basis(arm, act, basis, F):
                     write_curve(fc, frames[:1], vals[:1, i])
                 else:
                     write_curve(fc, frames, vals[:, i])
+                if keyed is not None:
+                    keyed.add((bname, prop, i))
+
+
+def action_curves(act):
+    if hasattr(act, 'fcurves'):  # Blender 4.3/4.4
+        return list(act.fcurves)
+    return [fc for layer in act.layers for strip in layer.strips
+            for bag in strip.channelbags for fc in bag.fcurves]
+
+
+def protect_actions(arm, actions, keyed, snapshot):
+    """Give other actions one key for each channel the clips animate and they don't.
+
+    Blender keeps un-animated channels at their last value when the active action
+    changes: without this, switching from a clip back to the user's action would leave
+    Torso, spine tweaks, hair... in the clip's last pose.  The key holds the value the
+    channel had in the source file, so those actions look as before.
+    """
+    current = arm.animation_data.action
+    for act in actions:
+        have = {(fc.data_path, fc.array_index) for fc in action_curves(act)}
+        arm.animation_data.action = act
+        added = 0
+        for bname, prop, i in sorted(keyed):
+            pb = arm.pose.bones[bname]
+            path = pb.path_from_id(prop)
+            if (path, i) in have:
+                continue
+            fc = new_fcurve(act, arm, path, i, bname)
+            write_curve(fc, np.array([act.frame_range[0]], np.float32), np.array([snapshot[bname][prop][i]]))
+            added += 1
+        print(f'"{act.name}": {added} rest keys added for channels animated only by the clips')
+    arm.animation_data.action = current
 
 
 def twist_about_y(R_parent, R_child, R0_parent, R0_child):
@@ -305,12 +341,14 @@ def forearm_twist(arm, F):
     return out
 
 
-def build_action(arm, name, basis, F):
+def build_action(arm, name, basis, F, keyed, hair=True):
     act = new_action(arm, name)
-    key_basis(arm, act, basis, F)
-    key_basis(arm, act, forearm_twist(arm, F), F)
     act.use_frame_range = True
     act.frame_start, act.frame_end = 1, F
+    key_basis(arm, act, basis, F, keyed)
+    key_basis(arm, act, forearm_twist(arm, F), F, keyed)
+    if hair:
+        key_basis(arm, act, hair_physics.simulate(arm, F), F, keyed)
     return act
 
 
@@ -349,12 +387,18 @@ def main():
     arm = bpy.data.objects[ARM_NAME]
     bones = rig_bones(arm)
     sc = bpy.context.scene
+    # values of every pose channel in the source file, and the user's own actions
+    snapshot = {pb.name: dict(location=list(pb.location), rotation_quaternion=list(pb.rotation_quaternion),
+                              rotation_euler=list(pb.rotation_euler)) for pb in arm.pose.bones}
+    user_actions = [act for act in bpy.data.actions if act.name not in a.clips]
     # keep the user's existing actions alive when Jean gets a new active action
-    for act in bpy.data.actions:
+    for act in user_actions:
         if act.users > 0 and not act.use_fake_user:
             act.use_fake_user = True
             print(f'fake user set on existing action "{act.name}"')
+    sc.render.fps, sc.render.fps_base = FPS, 1.0
     made = []
+    keyed = set()
     for clip in a.clips:
         path = os.path.join(a.bvh_dir, clip + '.bvh')
         t0 = time.time()
@@ -362,10 +406,10 @@ def main():
         if abs(r['fps'] - FPS) > 0.01:
             print(f'warning: {clip} is {r["fps"]:.2f} fps, keyed 1:1 at {FPS} fps')
         basis = solve_controls(arm, bones, r)
-        act = build_action(arm, clip, basis, r['F'])
+        act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair)
         made.append((act, r))
         print(f'{clip}: {r["F"]} frames, {len(basis)} controls, {time.time() - t0:.1f}s')
-    sc.render.fps, sc.render.fps_base = FPS, 1.0
+    protect_actions(arm, user_actions, keyed, snapshot)
     first_act, first_r = made[0]
     arm.animation_data.action = first_act
     sc.frame_start, sc.frame_end = 1, first_r['F']

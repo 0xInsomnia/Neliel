@@ -11,8 +11,8 @@ repository.
 
 ## Uso
 
-Mettere `apply_bandai.py`, `bvh.py`, `retarget.py` e la cartella `bvh/` accanto
-al `.blend`, poi:
+Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py` e la
+cartella `bvh/` accanto al `.blend`, poi:
 
 ```sh
 blender -b Neliel_rig_fasce_test_02.blend --python apply_bandai.py -- \
@@ -28,11 +28,15 @@ Opzioni:
 - `--clips walk_normal,bow_feminine`: applica solo alcune clip.
 - `--verify`: stampa lo scarto osso per osso rispetto al retarget.
 - `--compress`: salva il file compresso.
+- `--no-hair`: salta la fisica dei capelli.
 
 Lo script non scrive mai il file aperto: rifiuta un `--out` uguale al file
 sorgente. Imposta la scena a 30 fps, assegna a `Jean` la prima clip e mette il
 fake user sulle Action già presenti, che altrimenti verrebbero perse al
-salvataggio.
+salvataggio. Alle Action già presenti (es. "Prova") aggiunge una sola chiave,
+con il valore del file originale, per ogni canale che le clip animano e loro no:
+senza, passando da una clip a "Prova" quei canali resterebbero nell'ultima posa
+della clip.
 
 ## Controlli animati
 
@@ -46,9 +50,28 @@ salvataggio.
 | `FootIK.L/R`, `KneeIK.L/R` | piede e pole del ginocchio |
 | `l/rForearmBend`, `l/rForearmTwist` | pronazione: 10% e 60% della torsione del polso, come lo switch `Hand_control=0` del rig |
 | `Root`, `Hips`, `Chest`, `NeckControl`, `ToeIK.L/R` | una chiave a riposo, liberi per le modifiche |
+| `Bip31`, `Bip40`–`Bip42` (coda), `Bip29/36/37`, `Bip30/38/39` (ciocche) | fisica dei capelli calcolata e salvata come chiavi |
 
 I pole sono messi dal lato in cui si piega l'arto nella mocap; con l'arto quasi
 dritto seguono l'orientamento del segmento superiore.
+
+## Fisica dei capelli
+
+`hair_physics.py` simula ogni osso dei capelli come una leva dalla sua testa al
+fondo della ciocca che muove (le ossa MMD sono più corte della mesh, allungata
+dalle shape key). Per ogni sotto-passo (4 per fotogramma):
+
+- inerzia, con smorzamento sul moto relativo alla testa: camminare a velocità
+  costante non trascina indietro i capelli, accelerazioni e giri sì;
+- molla verso la forma di riposo portata dall'osso genitore;
+- gravità relativa al riposo: a testa dritta resta la forma modellata,
+  nell'inchino la coda cade;
+- collisioni con la superficie deformata di `Body` (e `head` per la coda),
+  vertice più vicino e normale; raggio mai maggiore dello spazio a riposo.
+
+Le ciocche laterali sono rigide (molle alte), escono dal corpo al massimo di
+3 mm per sotto-passo e non si piegano oltre 70°, per evitare scatti. I
+parametri sono in `CHAINS` in cima al file.
 
 ## Retarget
 
@@ -57,12 +80,24 @@ dritto seguono l'orientamento del segmento superiore.
 rig `lThighTwist` dipende dall'osso IK `ThighBend.L.001`, quindi prima
 ginocchio e tibia restavano rigidi con il bacino (fino a 9,5 cm di scarto).
 
+Postura: bacino, schiena, collo e testa (`KEEP_REST` in `retarget.py`) tengono
+la posa di riposo del personaggio al fotogramma di calibrazione e ricevono solo
+il movimento successivo. Allinearli ai segmenti della mocap ruotava il bacino
+indietro (7–10°), il torace in avanti (14–20°) e la testa indietro (20–35°):
+seno e glutei sembravano cadere e la coda entrava nella schiena. Inoltre la
+clip viene girata attorno alla verticale perché al fotogramma 0 il bacino guardi
+avanti: nelle clip `feminine` l'attrice parte girata di 30–50° e prima gli arti
+restavano girati rispetto al busto.
+
 ## Limiti noti
 
 - Catene IK di 3 ossa con l'osso centrale corto (`Elbow`, `Knee`): gomito e
   ginocchio possono scostarsi fino a circa 2 cm.
 - L'IK orienta braccio e coscia secondo il piano di piegatura: la torsione può
-  differire molto dal retarget (fino a circa 100° sul braccio nelle clip
-  `feminine`), mentre posizioni e direzioni restano entro pochi gradi.
-- Dita, capelli e viso non sono animati; i piedi non sono bloccati a terra
-  durante l'appoggio.
+  differire dal retarget (fino a circa 58° sul braccio e 28° sulla coscia),
+  mentre posizioni e direzioni restano entro pochi gradi.
+- Dita e viso non sono animati; i piedi non sono bloccati a terra durante
+  l'appoggio.
+- Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
+  ciocche, nessuna collisione tra capelli o con i vestiti; in `walk_feminine`
+  le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2 cm).
