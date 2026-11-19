@@ -11,8 +11,8 @@ repository.
 
 ## Uso
 
-Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py` e la
-cartella `bvh/` accanto al `.blend`, poi:
+Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py`,
+`hand_pose.py` e la cartella `bvh/` accanto al `.blend`, poi:
 
 ```sh
 blender -b Neliel_rig_fasce_test_02.blend --python apply_bandai.py -- \
@@ -29,6 +29,7 @@ Opzioni:
 - `--verify`: stampa lo scarto osso per osso rispetto al retarget.
 - `--compress`: salva il file compresso.
 - `--no-hair`: salta la fisica dei capelli.
+- `--no-fingers`: lascia le dita a riposo.
 
 Lo script non scrive mai il file aperto: rifiuta un `--out` uguale al file
 sorgente. Imposta la scena a 30 fps, assegna a `Jean` la prima clip e mette il
@@ -51,9 +52,20 @@ della clip.
 | `l/rForearmBend`, `l/rForearmTwist` | pronazione: 10% e 60% della torsione del polso, come lo switch `Hand_control=0` del rig |
 | `Root`, `Hips`, `Chest`, `NeckControl`, `ToeIK.L/R` | una chiave a riposo, liberi per le modifiche |
 | `Bip31`, `Bip40`–`Bip42` (coda), `Bip29/36/37`, `Bip30/38/39` (ciocche) | fisica dei capelli calcolata e salvata come chiavi |
+| `l/rThumb1`, `l/rIndex1`, `l/rMid1`, `l/rRing1`, `l/rPinky1`, `l/rCarpal4` | posa delle dita (`hand_pose.py`): le altre falangi e i carpi copiano questi controlli |
 
 I pole sono messi dal lato in cui si piega l'arto nella mocap; con l'arto quasi
 dritto seguono l'orientamento del segmento superiore.
+
+## Dita
+
+La mocap non registra le dita. `hand_pose.py` dà una mano rilassata (dita
+piegate in modo crescente dall'indice al mignolo, pollice e palmo appena
+chiusi) e la apre quando la mano sale verso il petto o il braccio si allunga
+lontano dal corpo (saluti, indicazioni). L'asse di piegatura di ogni dito è
+calcolato dalla geometria di riposo, perpendicolare al dito e alla normale del
+palmo; il passaggio fra le due pose è filtrato su 0,15 s. Angoli e soglie sono
+in cima al file.
 
 ## Fisica dei capelli
 
@@ -106,8 +118,9 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
 - L'IK orienta braccio e coscia secondo il piano di piegatura: la torsione può
   differire dal retarget (fino a circa 58° sul braccio e 28° sulla coscia),
   mentre posizioni e direzioni restano entro pochi gradi.
-- Dita e viso non sono animati; i piedi non sono bloccati a terra durante
-  l'appoggio.
+- Dita ricostruite dalla posizione della mano, non registrate: niente pugni o
+  dita che indicano; le mani giunte si compenetrano. Viso non animato; i piedi
+  non sono bloccati a terra durante l'appoggio.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
   ciocche, nessuna collisione tra capelli o con i vestiti; in `walk_feminine`
   le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2,2 cm).

@@ -41,6 +41,7 @@ if HERE not in sys.path:
     sys.path.insert(0, HERE)
 from retarget import retarget  # noqa: E402  (bvh.py and retarget.py live next to this script)
 import hair_physics  # noqa: E402
+import hand_pose  # noqa: E402
 
 ARM_NAME = 'Jean'
 FPS = 30
@@ -78,6 +79,7 @@ def parse_args():
     ap.add_argument('--verify', action='store_true', help='evaluate every frame and print errors')
     ap.add_argument('--compress', action='store_true', help='save the output compressed')
     ap.add_argument('--no-hair', action='store_true', help='skip the baked hair physics')
+    ap.add_argument('--no-fingers', action='store_true', help='leave the fingers at rest')
     a = ap.parse_args(argv)
     a.clips = [c for c in a.clips.split(',') if c] or DEFAULT_CLIPS
     return a
@@ -406,6 +408,8 @@ def main():
         if abs(r['fps'] - FPS) > 0.01:
             print(f'warning: {clip} is {r["fps"]:.2f} fps, keyed 1:1 at {FPS} fps')
         basis = solve_controls(arm, bones, r)
+        if not a.no_fingers:
+            basis.update(hand_pose.finger_bases(arm, r, {b['name']: i for i, b in enumerate(bones)}))
         act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair)
         made.append((act, r))
         print(f'{clip}: {r["F"]} frames, {len(basis)} controls, {time.time() - t0:.1f}s')

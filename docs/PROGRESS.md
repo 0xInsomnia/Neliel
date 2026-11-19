@@ -1,3 +1,20 @@
+# Dita per le clip Bandai — 19 novembre 2026
+
+La mocap non contiene le dita: le mani restavano piatte. Nuovo
+`tools/blender/bandai/hand_pose.py`: chiavi sui controlli delle dita del rig
+(ossa base di ogni dito e `Carpal4`; le altre falangi ne copiano la rotazione).
+Mano rilassata di base, aperta quando la mano sale verso il petto (altezza fra
+bacino e spalla 0,35–0,7) o il braccio si allunga oltre 0,85 lunghezze dal
+bacino; filtro di 0,15 s.
+
+Verifiche: primi piani delle mani in tutte le clip; le dita si chiudono verso il
+palmo, mano aperta nei saluti, rilassata in camminata. Corpo identico alla
+versione precedente, "Prova" invariata (84 chiavi a riposo in più per le dita),
+capelli invariati. Limite: posa ricostruita, non registrata; mani giunte
+nell'inchino si compenetrano.
+
+---
+
 # Camminata senza zoppia — 19 novembre 2026
 
 Segnalazione dell'utente: in `walk_normal` il personaggio sembrava zoppicare.
