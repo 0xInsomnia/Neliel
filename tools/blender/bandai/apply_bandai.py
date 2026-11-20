@@ -39,7 +39,7 @@ def _script_dir():
 HERE = _script_dir()
 if HERE not in sys.path:
     sys.path.insert(0, HERE)
-from retarget import retarget  # noqa: E402  (bvh.py and retarget.py live next to this script)
+from retarget import retarget, neutral_posture  # noqa: E402  (bvh.py and retarget.py live next to this script)
 import hair_physics  # noqa: E402
 import hand_pose  # noqa: E402
 import face_anim  # noqa: E402
@@ -71,13 +71,25 @@ for _s in 'lr':
 
 # ----------------------------------------------------------------------------- args
 
+# Emotional styles keep their posture: the torso is calibrated on the neutral posture of
+# the same actor (the mean of her normal walk) instead of the clip's first frame.
+EMOTION_STYLES = ('happy', 'sad', 'angry', 'proud', 'not-confident')
+POSTURE_REF_CLIP = 'walk_normal'
+
+
+def available_clips(bvh_dir):
+    """The 12 original clips first (the first one becomes the active action), then the rest."""
+    names = sorted(f[:-4] for f in os.listdir(bvh_dir) if f.endswith('.bvh'))
+    return [c for c in DEFAULT_CLIPS if c in names] + [c for c in names if c not in DEFAULT_CLIPS]
+
+
 def parse_args():
     argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
     base = os.path.dirname(bpy.data.filepath)
     ap = argparse.ArgumentParser(description=__doc__.split('\n')[0])
     ap.add_argument('--bvh-dir', default=os.path.join(base, 'bvh'))
     ap.add_argument('--out', default=os.path.join(base, 'Neliel_bandai_test.blend'))
-    ap.add_argument('--clips', default='', help='comma separated clip names (default: all 12)')
+    ap.add_argument('--clips', default='', help='comma separated clip names (default: every .bvh in --bvh-dir)')
     ap.add_argument('--verify', action='store_true', help='evaluate every frame and print errors')
     ap.add_argument('--compress', action='store_true', help='save the output compressed')
     ap.add_argument('--no-hair', action='store_true', help='skip the baked hair physics')
@@ -85,7 +97,7 @@ def parse_args():
     ap.add_argument('--no-face', action='store_true', help='no blinks, gaze or expressions')
     ap.add_argument('--no-foot-lock', action='store_true', help='let planted feet slide as in the mocap')
     a = ap.parse_args(argv)
-    a.clips = [c for c in a.clips.split(',') if c] or DEFAULT_CLIPS
+    a.clips = [c for c in a.clips.split(',') if c] or available_clips(a.bvh_dir)
     return a
 
 
@@ -425,10 +437,17 @@ def main():
         face_anim.setup(arm)
     made = []
     keyed = set()
+    posture_refs = {}
     for clip in a.clips:
         path = os.path.join(a.bvh_dir, clip + '.bvh')
         t0 = time.time()
-        r = retarget(bones, path, foot_bones=FOOT)
+        style = clip.split('_')[1] if '_' in clip else 'normal'
+        ref = None
+        if style in EMOTION_STYLES:
+            ref_path = os.path.join(a.bvh_dir, POSTURE_REF_CLIP + '.bvh')
+            if os.path.exists(ref_path):
+                ref = posture_refs.setdefault(ref_path, neutral_posture(ref_path))
+        r = retarget(bones, path, foot_bones=FOOT, posture_ref=ref)
         if abs(r['fps'] - FPS) > 0.01:
             print(f'warning: {clip} is {r["fps"]:.2f} fps, keyed 1:1 at {FPS} fps')
         if not a.no_foot_lock:
@@ -439,10 +458,10 @@ def main():
         basis = solve_controls(arm, bones, r)
         bidx = {b['name']: i for i, b in enumerate(bones)}
         if not a.no_fingers:
-            basis.update(hand_pose.finger_bases(arm, r, bidx))
+            basis.update(hand_pose.finger_bases(arm, r, bidx, clip.split('_')[0]))
         props = None
         if not a.no_face:
-            gesture = np.maximum(hand_pose.openness(arm, r, bidx, 'l'), hand_pose.openness(arm, r, bidx, 'r'))
+            gesture = hand_pose.gesture_weight(arm, r, bidx, clip.split('_')[0])
             face = face_anim.animate(arm, r, bidx, clip, gesture)
             basis[face_anim.EYE_BONE] = face['eyes']
             props = face['props']

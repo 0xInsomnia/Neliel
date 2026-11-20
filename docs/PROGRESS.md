@@ -1,3 +1,25 @@
+# 37 nuove clip Bandai: spostamenti ed emozioni — 20 novembre 2026
+
+Scaricate dal repository pubblico Bandai Namco (dataset 1) 37 clip: corsa,
+scatto, camminata all'indietro e laterale (`normal`, `feminine`), seconde
+riprese delle camminate, e `walk`/`bow`/`bye`/`byebye`/`guide` negli stili
+`happy`, `sad`, `angry`, `proud`, `not-confident`. Le 12 iniziali coincidono con
+i file del repository. In tutto 49 Action.
+
+Nuovo in `tools/blender/bandai`: per gli stili emotivi il busto è calibrato
+sulla postura neutra della stessa attrice (`neutral_posture`), perché lo stile
+è già nella postura iniziale; tre nuovi canali del viso (`Eye_Tired`, `じと目`,
+`ん`) ed espressioni per stile; mani chiuse in corsa. Le 12 clip già approvate
+non cambiano (stesse chiavi del corpo).
+
+Verifiche: busto/testa entro 0,7°, mani/piedi entro 0,2° dal retarget; tutte le
+Action hanno gli stessi 381 canali (nessuna posa residua cambiando clip);
+"Prova" invariata; viso a riposo identico pixel per pixel. Piedi: 34 clip su 49
+entro 4 mm, le altre 5–23 mm (gamba tesa, passi laterali). Capelli e render nei
+fogli di controllo e nei video.
+
+---
+
 # Piedi bloccati a terra — 20 novembre 2026
 
 Nuovo `tools/blender/bandai/foot_lock.py`: durante l'appoggio il tallone (poi

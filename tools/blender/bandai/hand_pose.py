@@ -21,6 +21,9 @@ OPEN = {'Thumb1': 2.0, 'Index1': 3.0, 'Mid1': 3.0, 'Ring1': 4.0, 'Pinky1': 5.0, 
 HEIGHT = (0.35, 0.7)
 REACH = (0.85, 1.05)
 SMOOTH = 0.15  # seconds, low-pass on the openness so fingers do not flicker
+# movements where the arms swing high without a gesture: hands stay closed, a bit more
+CLOSED_KINDS = ('run', 'dash')
+CLOSED_CURL = 1.6
 
 
 def _smoothstep(e0, e1, x):
@@ -77,14 +80,23 @@ def openness(arm, r, idx, s):
     return _lowpass(w, r['fps'], SMOOTH)
 
 
-def finger_bases(arm, r, idx):
+def gesture_weight(arm, r, idx, kind):
+    """Openness of the more open hand, 0 for movements without gestures (running)."""
+    if kind in CLOSED_KINDS:
+        return np.zeros(r['F'])
+    return np.maximum(openness(arm, r, idx, 'l'), openness(arm, r, idx, 'r'))
+
+
+def finger_bases(arm, r, idx, kind=''):
     """{bone: (F,4,4) matrix_basis} for the finger controls of both hands."""
     out = {}
+    closed = kind in CLOSED_KINDS
     for s in 'lr':
         axes = curl_axes(arm, s)
-        w = openness(arm, r, idx, s)
+        w = np.zeros(r['F']) if closed else openness(arm, r, idx, s)
         for key, ax in axes.items():
-            ang = np.radians(RELAXED[key] * (1 - w) + OPEN[key] * w)
+            relaxed = RELAXED[key] * (CLOSED_CURL if closed else 1.0)
+            ang = np.radians(relaxed * (1 - w) + OPEN[key] * w)
             B = np.repeat(np.eye(4)[None], len(w), 0)
             c, sn = np.cos(ang), np.sin(ang)
             x, y, z = ax

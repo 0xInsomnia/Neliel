@@ -32,6 +32,56 @@ KEEP_REST = ('DEF-spine', 'abdomenLower', 'chestLower', 'neckLower', 'head')
 FEET = (('lFoot', 'lToe', 'L'), ('rFoot', 'rToe', 'R'))
 
 
+def _mat2quat(M):
+    w = np.sqrt(max(0.0, 1 + M[0, 0] + M[1, 1] + M[2, 2])) / 2
+    x = np.copysign(np.sqrt(max(0.0, 1 + M[0, 0] - M[1, 1] - M[2, 2])) / 2, M[2, 1] - M[1, 2])
+    y = np.copysign(np.sqrt(max(0.0, 1 - M[0, 0] + M[1, 1] - M[2, 2])) / 2, M[0, 2] - M[2, 0])
+    z = np.copysign(np.sqrt(max(0.0, 1 - M[0, 0] - M[1, 1] + M[2, 2])) / 2, M[1, 0] - M[0, 1])
+    return np.array([w, x, y, z])
+
+
+def _quat2mat(q):
+    w, x, y, z = q / np.linalg.norm(q)
+    return np.array([[1 - 2 * (y * y + z * z), 2 * (x * y - z * w), 2 * (x * z + y * w)],
+                     [2 * (x * y + z * w), 1 - 2 * (x * x + z * z), 2 * (y * z - x * w)],
+                     [2 * (x * z - y * w), 2 * (y * z + x * w), 1 - 2 * (x * x + y * y)]])
+
+
+def _offsets(joints):
+    return np.array([j['offset'] for j in joints])
+
+
+def neutral_posture(bvh_path):
+    """Mean posture of the torso joints in a reference clip of the same actor.
+
+    Global rotations with the hips' heading removed frame by frame, averaged over the
+    clip.  Used instead of the calibration frame for the KEEP_REST bones, so a style
+    whose posture is already there at frame 0 (sad, proud, angry...) keeps it.
+    """
+    joints, data, ft = load_bvh(bvh_path)
+    Rs, Ps = fk(joints, data)
+    names = [j['name'] for j in joints]
+    G = np.einsum('ij,fkjl,ml->fkim', C, Rs, C)
+    P = np.einsum('ij,fkj->fki', C, Ps)
+    L = P[:, names.index('UpperLeg_L')] - P[:, names.index('UpperLeg_R')]
+    yaw = -np.arctan2(L[:, 1], L[:, 0])
+    rot = {}
+    for t, (s, _) in MAP.items():
+        if t not in KEEP_REST:
+            continue
+        j = names.index(s)
+        acc, ref = np.zeros(4), None
+        for f in range(len(P)):
+            a = yaw[f]
+            Y = np.array([[np.cos(a), -np.sin(a), 0], [np.sin(a), np.cos(a), 0], [0, 0, 1]])
+            q = _mat2quat(Y @ G[f, j])
+            if ref is None:
+                ref = q
+            acc += q if np.dot(q, ref) >= 0 else -q
+        rot[s] = _quat2mat(acc)
+    return dict(rot=rot, offsets=_offsets(joints), source=bvh_path)
+
+
 def _pitch(v):
     """Angle below the horizontal (radians)."""
     return np.arctan2(-v[2], np.hypot(v[0], v[1]))
@@ -180,8 +230,12 @@ def ball_contact(bones, idx, lp, Rw, Hw, Rrest, Hrest, tails, tips, toe_g, g0):
                 Hw[f, b] = Hw[f, b] + shift
 
 
-def retarget(bones, bvh_path, ref_frame=0, foot_bones=None, keep_rest=KEEP_REST, face_forward=True):
+def retarget(bones, bvh_path, ref_frame=0, foot_bones=None, keep_rest=KEEP_REST, face_forward=True,
+             posture_ref=None):
     joints, data, ft = load_bvh(bvh_path)
+    if posture_ref is not None and not np.allclose(posture_ref['offsets'], _offsets(joints), atol=1e-3):
+        print(f'warning: {bvh_path}: posture reference is another actor, using frame {ref_frame}')
+        posture_ref = None
     Rs, Ps = fk(joints, data)
     names = [j['name'] for j in joints]
     F = len(data)
@@ -221,7 +275,10 @@ def retarget(bones, bvh_path, ref_frame=0, foot_bones=None, keep_rest=KEEP_REST,
                 d0 = P[ref_frame, c] - P[ref_frame, s]
                 if np.linalg.norm(d0) > 1e-6:
                     Rcarry = rot_between(Rcarry[:, 1], d0) @ Rcarry
-            Cal[i] = G[ref_frame, s].T @ Rcarry
+            src = G[ref_frame, s]
+            if posture_ref is not None and bones[i]['name'] in keep_rest:
+                src = posture_ref['rot'][names[s]]  # the actor's neutral posture
+            Cal[i] = src.T @ Rcarry
         Rref[i] = Rcarry
 
     # ---- feet: flat on the ground at a frame where the source foot is planted

@@ -3,12 +3,15 @@
 The visible anime head ("head" mesh) is shaped by MMD shape keys, not by the Daz face
 bones, and in Blender 4.3 an armature Action cannot animate shape keys.  So the rig
 gets four properties on the Root bone, keyed in each clip Action like any control,
-and six shape keys are driven by them:
+and nine shape keys are driven by them:
 
     Viso_ciglia        blink               -> ウィンク２, ｳｨﾝｸ２右 (neutral closed eyes)
     Viso_occhi_felici  happy closed eyes   -> ウィンク, ウィンク右 (smiling arcs)
     Viso_sorriso       smile               -> 口角上げ (from its value in the file to 1)
     Viso_bocca         open mouth          -> あ
+    Viso_occhi_stanchi tired eyes          -> Eye_Tired
+    Viso_sguardo_torvo half-closed glare   -> じと目
+    Viso_bocca_chiusa  pressed lips        -> ん
 
 With every property at 0 the face is exactly as in the source file.  The gaze is
 keyed on the MMD eye control 両目.  Expressions per clip are in EXPRESSIONS: the mocap
@@ -20,7 +23,8 @@ import zlib
 import bpy
 import numpy as np
 
-PROPS = ('Viso_ciglia', 'Viso_occhi_felici', 'Viso_sorriso', 'Viso_bocca')
+PROPS = ('Viso_ciglia', 'Viso_occhi_felici', 'Viso_sorriso', 'Viso_bocca',
+         'Viso_occhi_stanchi', 'Viso_sguardo_torvo', 'Viso_bocca_chiusa')
 CONTROL_BONE = 'Root'
 HEAD_MESH = 'head'
 EYE_BONE = '両目'
@@ -32,20 +36,45 @@ DRIVEN = {
     'ｳｨﾝｸ２右': ('c*(1-h)', ('c', 'h')),
     '口角上げ': ('{base:.4f}+{rest:.4f}*s', ('s',)),
     'あ': ('b', ('b',)),
+    # a blink takes over tired / half-closed eyes, an open mouth takes over a pressed one
+    'Eye_Tired': ('t*(1-c)', ('t', 'c')),
+    'じと目': ('g*(1-c)', ('g', 'c')),
+    'ん': ('n*(1-b)', ('n', 'b')),
 }
-VAR_PROP = {'c': 'Viso_ciglia', 'h': 'Viso_occhi_felici', 's': 'Viso_sorriso', 'b': 'Viso_bocca'}
+VAR_PROP = {'c': 'Viso_ciglia', 'h': 'Viso_occhi_felici', 's': 'Viso_sorriso', 'b': 'Viso_bocca',
+            't': 'Viso_occhi_stanchi', 'g': 'Viso_sguardo_torvo', 'n': 'Viso_bocca_chiusa'}
+CHANNELS = {'sorriso': 'Viso_sorriso', 'occhi_felici': 'Viso_occhi_felici', 'bocca': 'Viso_bocca',
+            'occhi_stanchi': 'Viso_occhi_stanchi', 'sguardo_torvo': 'Viso_sguardo_torvo',
+            'bocca_chiusa': 'Viso_bocca_chiusa'}
 
-# expression at rest and at the peak of the gesture (hand raised / arm reaching, or the
-# deepest point of a bow): smile, happy eyes, mouth
+# expression per movement, at rest and at the peak of the gesture (hand raised / arm
+# reaching, or the deepest point of a bow); channels not listed are 0
 EXPRESSIONS = {
-    'walk':    dict(rest=(0.2, 0.0, 0.0), gesture=(0.2, 0.0, 0.0)),
-    'bow':     dict(rest=(0.25, 0.0, 0.0), gesture=(0.7, 0.35, 0.0)),
-    'bye':     dict(rest=(0.3, 0.0, 0.0), gesture=(1.0, 0.3, 0.15)),
-    'byebye':  dict(rest=(0.3, 0.0, 0.0), gesture=(1.0, 0.3, 0.2)),
-    'respond': dict(rest=(0.2, 0.0, 0.0), gesture=(0.9, 0.15, 0.35)),
-    'call':    dict(rest=(0.2, 0.0, 0.0), gesture=(0.5, 0.0, 0.7)),
-    'guide':   dict(rest=(0.2, 0.0, 0.0), gesture=(0.8, 0.15, 0.1)),
+    'walk':    dict(rest=dict(sorriso=0.2), gesture=dict(sorriso=0.2)),
+    'run':     dict(rest=dict(sorriso=0.1, bocca=0.25), gesture=dict(sorriso=0.1, bocca=0.25)),
+    'bow':     dict(rest=dict(sorriso=0.25), gesture=dict(sorriso=0.7, occhi_felici=0.35)),
+    'bye':     dict(rest=dict(sorriso=0.3), gesture=dict(sorriso=1.0, occhi_felici=0.3, bocca=0.15)),
+    'byebye':  dict(rest=dict(sorriso=0.3), gesture=dict(sorriso=1.0, occhi_felici=0.3, bocca=0.2)),
+    'respond': dict(rest=dict(sorriso=0.2), gesture=dict(sorriso=0.9, occhi_felici=0.15, bocca=0.35)),
+    'call':    dict(rest=dict(sorriso=0.2), gesture=dict(sorriso=0.5, bocca=0.7)),
+    'guide':   dict(rest=dict(sorriso=0.2), gesture=dict(sorriso=0.8, occhi_felici=0.15, bocca=0.1)),
 }
+KIND_ALIAS = {'walk-back': 'walk', 'walk-left': 'walk', 'walk-right': 'walk', 'dash': 'run'}
+# emotional styles replace the movement's values (the gesture timing stays)
+STYLES = {
+    'happy':         dict(rest=dict(sorriso=0.6, occhi_felici=0.15),
+                          gesture=dict(sorriso=1.0, occhi_felici=0.4, bocca=0.25)),
+    'sad':           dict(rest=dict(occhi_stanchi=0.5, bocca_chiusa=0.3),
+                          gesture=dict(occhi_stanchi=0.45, bocca_chiusa=0.2)),
+    'angry':         dict(rest=dict(sguardo_torvo=0.6, bocca_chiusa=0.6),
+                          gesture=dict(sguardo_torvo=0.7, bocca_chiusa=0.4, bocca=0.15)),
+    'proud':         dict(rest=dict(sorriso=0.4, sguardo_torvo=0.15),
+                          gesture=dict(sorriso=0.7, sguardo_torvo=0.1, occhi_felici=0.1)),
+    'not-confident': dict(rest=dict(sorriso=0.05, occhi_stanchi=0.3, bocca_chiusa=0.2),
+                          gesture=dict(sorriso=0.2, occhi_stanchi=0.25, bocca_chiusa=0.1)),
+}
+STYLE_GAZE_UP = {'not-confident': -4.0, 'sad': -3.0, 'proud': 1.0}  # degrees
+STYLE_BLINK = {'not-confident': (1.0, 2.5), 'sad': (2.5, 5.5), 'angry': (3.0, 6.0)}
 FEMININE_HAPPY = 0.1        # extra happy-eye squint in the feminine clips during gestures
 BLINK_EVERY = (1.8, 4.5)    # seconds between blinks (about 15-20 per minute)
 BLINK_CURVE = (0.35, 0.75, 1.0, 0.6, 0.25)  # eyelid closure on consecutive frames (30 fps)
@@ -115,8 +144,10 @@ def setup(arm):
 # ----------------------------------------------------------------------------- animation
 
 def _style(clip):
-    kind = clip.split('_')[0]
-    return EXPRESSIONS.get(kind, EXPRESSIONS['walk']), clip.endswith('feminine')
+    """(movement, style) from a clip name like 'walk-back_feminine' or 'walk_normal_2'."""
+    parts = clip.split('_')
+    kind = KIND_ALIAS.get(parts[0], parts[0])
+    return (kind if kind in EXPRESSIONS else 'walk'), (parts[1] if len(parts) > 1 else 'normal')
 
 
 def _head_yaw_pitch(arm, r, idx):
@@ -148,12 +179,14 @@ def animate(arm, r, idx, clip, gesture):
     turn = np.abs(np.gradient(yaw)) * fps + np.abs(np.gradient(pitch)) * fps
 
     # blinks: random intervals, plus one on fast head turns
+    kind, style = _style(clip)
+    every = STYLE_BLINK.get(style, BLINK_EVERY)
     blink = np.zeros(F)
     starts = []
-    t = rng.uniform(0.5, BLINK_EVERY[1]) * fps
+    t = rng.uniform(0.5, every[1]) * fps
     while t < F:
         starts.append(int(t))
-        t += rng.uniform(*BLINK_EVERY) * fps
+        t += rng.uniform(*every) * fps
     for f in np.where(turn > TURN_BLINK)[0]:
         if all(abs(f - s) > 0.8 * fps for s in starts):
             starts.append(int(f))
@@ -163,13 +196,20 @@ def animate(arm, r, idx, clip, gesture):
                 blink[s + k] = max(blink[s + k], v)
 
     # expressions follow the gesture (or the bow)
-    style, feminine = _style(clip)
-    w = np.maximum(gesture, _bow_weight(arm, r, idx)) if clip.startswith('bow') else gesture
+    w = np.maximum(gesture, _bow_weight(arm, r, idx)) if kind == 'bow' else gesture
     w = _lowpass(w, fps, SMOOTH)
-    rest = np.array(style['rest'])
-    peak = np.array(style['gesture']) + (np.array([0, FEMININE_HAPPY, 0]) if feminine else 0)
-    expr = rest[None] + (peak - rest)[None] * w[:, None]
-    smile, happy, mouth = (np.clip(_lowpass(expr[:, i], fps, SMOOTH), 0, 1) for i in range(3))
+    rest = dict(EXPRESSIONS[kind]['rest'])
+    peak = dict(EXPRESSIONS[kind]['gesture'])
+    if style in STYLES:
+        rest = dict(STYLES[style]['rest'])
+        peak = dict(STYLES[style]['gesture'])
+    if style == 'feminine':
+        peak['occhi_felici'] = peak.get('occhi_felici', 0.0) + FEMININE_HAPPY
+    props = {}
+    for ch, prop in CHANNELS.items():
+        v = rest.get(ch, 0.0) + (peak.get(ch, 0.0) - rest.get(ch, 0.0)) * w
+        props[prop] = np.clip(_lowpass(v, fps, SMOOTH), 0, 1)
+    props['Viso_ciglia'] = blink
 
     # gaze: small saccades plus a lead into head turns
     sac = np.zeros((F, 2))
@@ -184,7 +224,7 @@ def animate(arm, r, idx, clip, gesture):
     look_ahead = int(round(0.17 * fps))
     lead = np.clip(0.6 * (np.r_[yaw[look_ahead:], np.repeat(yaw[-1], look_ahead)] - yaw), -LEAD_DEG, LEAD_DEG)
     eye_left = sac[:, 0] + lead        # degrees, towards her left
-    eye_up = sac[:, 1]
+    eye_up = sac[:, 1] + STYLE_GAZE_UP.get(style, 0.0)
     # 両目: rotating about its local X turns the eyes to her right, about Z upwards
     eyes = np.repeat(np.eye(4)[None], F, 0)
     ax, az = np.radians(-eye_left), np.radians(eye_up)
@@ -193,5 +233,4 @@ def animate(arm, r, idx, clip, gesture):
         Rx = np.array([[1, 0, 0], [0, cx, -sx], [0, sx, cx]])
         Rz = np.array([[cz, -sz, 0], [sz, cz, 0], [0, 0, 1]])
         eyes[f, :3, :3] = Rx @ Rz
-    return dict(props=dict(Viso_ciglia=blink, Viso_occhi_felici=happy, Viso_sorriso=smile, Viso_bocca=mouth),
-                eyes=eyes)
+    return dict(props=props, eyes=eyes)

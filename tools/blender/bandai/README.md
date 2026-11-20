@@ -26,7 +26,8 @@ stessa cartella.
 
 Opzioni:
 
-- `--clips walk_normal,bow_feminine`: applica solo alcune clip.
+- `--clips walk_normal,bow_feminine`: applica solo alcune clip (senza, tutte quelle
+  presenti in `--bvh-dir`; le 12 clip iniziali per prime).
 - `--verify`: stampa lo scarto osso per osso rispetto al retarget.
 - `--compress`: salva il file compresso.
 - `--no-hair`: salta la fisica dei capelli.
@@ -41,6 +42,27 @@ salvataggio. Alle Action già presenti (es. "Prova") aggiunge una sola chiave,
 con il valore del file originale, per ogni canale che le clip animano e loro no:
 senza, passando da una clip a "Prova" quei canali resterebbero nell'ultima posa
 della clip.
+
+## Clip e file BVH
+
+I BVH vengono dal repository pubblico
+`BandaiNamcoResearchInc/Bandai-Namco-Research-Motiondataset`, cartella
+`dataset/Bandai-Namco-Research-Motiondataset-1/data` (licenza CC BY-NC 4.0, solo
+uso personale: non vanno nel repository). I file si rinominano col nome della
+clip: `dataset-1_walk-back_feminine_001.bvh` diventa `walk-back_feminine.bvh`,
+la seconda ripresa `_002` diventa `_2` (`walk_normal_2.bvh`).
+
+Clip applicate finora (49): le 12 iniziali; spostamenti `run`, `dash`,
+`walk-back`, `walk-left`, `walk-right` in stile `normal` e `feminine`, più
+`walk_normal_2` e `walk_feminine_2`; emozioni `walk`, `bow`, `bye`, `byebye`,
+`guide` negli stili `happy`, `sad`, `angry`, `proud`, `not-confident`.
+
+Gli stili emotivi (`EMOTION_STYLES`) calibrano busto, collo e testa sulla postura
+neutra della stessa attrice (media della sua `walk_normal`, `neutral_posture` in
+`retarget.py`) invece che sul fotogramma 0, perché la postura dello stile c'è già
+all'inizio della clip (busto in avanti di 13° in `walk_angry`, testa china di 24°
+in `walk_not-confident`). Se il riferimento è di un'altra attrice (scheletro
+diverso) lo script lo segnala e usa il fotogramma 0.
 
 ## Controlli animati
 
@@ -57,7 +79,7 @@ della clip.
 | `Bip31`, `Bip40`–`Bip42` (coda), `Bip29/36/37`, `Bip30/38/39` (ciocche) | fisica dei capelli calcolata e salvata come chiavi |
 | `l/rThumb1`, `l/rIndex1`, `l/rMid1`, `l/rRing1`, `l/rPinky1`, `l/rCarpal4` | posa delle dita (`hand_pose.py`): le altre falangi e i carpi copiano questi controlli |
 | `両目` | sguardo (`face_anim.py`) |
-| `Root["Viso_ciglia"]`, `["Viso_occhi_felici"]`, `["Viso_sorriso"]`, `["Viso_bocca"]` | viso (`face_anim.py`), tramite driver sulle shape key |
+| `Root["Viso_ciglia"]`, `["Viso_occhi_felici"]`, `["Viso_sorriso"]`, `["Viso_bocca"]`, `["Viso_occhi_stanchi"]`, `["Viso_sguardo_torvo"]`, `["Viso_bocca_chiusa"]` | viso (`face_anim.py`), tramite driver sulle shape key |
 
 I pole sono messi dal lato in cui si piega l'arto nella mocap; con l'arto quasi
 dritto seguono l'orientamento del segmento superiore.
@@ -81,8 +103,9 @@ piegate in modo crescente dall'indice al mignolo, pollice e palmo appena
 chiusi) e la apre quando la mano sale verso il petto o il braccio si allunga
 lontano dal corpo (saluti, indicazioni). L'asse di piegatura di ogni dito è
 calcolato dalla geometria di riposo, perpendicolare al dito e alla normale del
-palmo; il passaggio fra le due pose è filtrato su 0,15 s. Angoli e soglie sono
-in cima al file.
+palmo; il passaggio fra le due pose è filtrato su 0,15 s. In corsa e scatto le
+mani restano chiuse un po' di più e non si aprono. Angoli e soglie sono in cima
+al file.
 
 ## Viso
 
@@ -97,16 +120,23 @@ copia, quattro proprietà su `Root` (chiavi nella Action di ogni clip) e sei dri
 | `Viso_occhi_felici` | `ウィンク`, `ウィンク右` (occhi chiusi ad arco) |
 | `Viso_sorriso` | `口角上げ`, dal valore del file (0,38) a 1 |
 | `Viso_bocca` | `あ` |
+| `Viso_occhi_stanchi` | `Eye_Tired`, ridotto da `Viso_ciglia` |
+| `Viso_sguardo_torvo` | `じと目`, ridotto da `Viso_ciglia` |
+| `Viso_bocca_chiusa` | `ん`, ridotto da `Viso_bocca` |
 
-Con le proprietà a 0 il viso è identico al file originale. Quelle sei shape key
+Con le proprietà a 0 il viso è identico al file originale. Quelle nove shape key
 non si muovono più a mano, ma dalle proprietà su `Root`; il loro valore originale
 è salvato sul datablock delle shape key (`neliel_base:<nome>`).
 
 Animazione: battiti di ciglia ogni 1,8–4,5 s (più uno quando la testa gira di
 scatto), piccoli movimenti degli occhi (±3°/±2°) e occhi che anticipano la testa
 nelle rotazioni, espressioni per clip (`EXPRESSIONS`) che seguono il gesto
-(mano che si apre, o la profondità dell'inchino). Sono un'interpretazione: la
-mocap non contiene il viso.
+(mano che si apre, o la profondità dell'inchino); gli stili emotivi (`STYLES`)
+hanno la loro espressione (felice: sorriso; triste: occhi stanchi e bocca chiusa;
+arrabbiata: sguardo torvo; fiera: sorriso leggero; insicura: occhi bassi), un
+proprio ritmo dei battiti e, per triste e insicura, lo sguardo un po' più basso.
+Le sopracciglia sono quasi sempre coperte dalla frangia, quindi non sono usate.
+Sono un'interpretazione: la mocap non contiene il viso.
 
 ## Fisica dei capelli
 
@@ -162,9 +192,11 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
 - Dita ricostruite dalla posizione della mano, non registrate: niente pugni o
   dita che indicano; le mani giunte si compenetrano. Viso interpretato (niente
   labiale reale).
-- Piedi: dove l'attrice tiene la gamba completamente tesa (`byebye_normal`,
-  `guide_normal`, `call_normal`, `bye_normal`) il piede non può restare fermo
-  senza abbassare il bacino e scivola ancora di 6–14 mm.
+- Piedi: dove l'attrice tiene la gamba completamente tesa, o nei passi laterali e
+  all'indietro, il piede non può restare fermo senza abbassare il bacino: in 15
+  clip su 49 scivola ancora di 5–23 mm (peggiori `walk_proud`,
+  `walk-right_feminine`, `walk_feminine_2`).
+- `dash_normal` dura solo 20 fotogrammi (così nel dataset).
 - `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
   Workbench: non sono usate.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
