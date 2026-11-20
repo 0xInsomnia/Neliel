@@ -23,16 +23,16 @@ from mathutils import Matrix, Quaternion, kdtree
 # bones root -> tip; per bone: stiffness (1/s^2), drag (per substep), gravity factor,
 # collision radius (m, armature space).  Lower stiffness = looser hair.
 CHAINS = {
-    'coda': [('Bip31', 300.0, 0.03, 1.0, 0.0),
-             ('Bip40', 60.0, 0.03, 1.0, 0.035),
-             ('Bip41', 15.0, 0.025, 1.0, 0.035),
-             ('Bip42', 10.0, 0.025, 1.0, 0.03)],
-    'ciocca destra': [('Bip29', 600.0, 0.2, 0.3, 0.012),
-                      ('Bip36', 500.0, 0.2, 0.3, 0.012),
-                      ('Bip37', 400.0, 0.2, 0.3, 0.012)],
-    'ciocca sinistra': [('Bip30', 600.0, 0.2, 0.3, 0.012),
-                        ('Bip38', 500.0, 0.2, 0.3, 0.012),
-                        ('Bip39', 400.0, 0.2, 0.3, 0.012)],
+    'coda': [('Bip31', 300.0, 0.04, 1.0, 0.0),
+             ('Bip40', 60.0, 0.04, 1.0, 0.035),
+             ('Bip41', 15.0, 0.04, 1.0, 0.035),
+             ('Bip42', 10.0, 0.04, 1.0, 0.03)],
+    'ciocca destra': [('Bip29', 400.0, 0.2, 0.7, 0.012),
+                      ('Bip36', 300.0, 0.2, 0.7, 0.012),
+                      ('Bip37', 250.0, 0.2, 0.7, 0.012)],
+    'ciocca sinistra': [('Bip30', 400.0, 0.2, 0.7, 0.012),
+                        ('Bip38', 300.0, 0.2, 0.7, 0.012),
+                        ('Bip39', 250.0, 0.2, 0.7, 0.012)],
 }
 HAIR_MESH = 'hair'
 COLLIDERS = ['Body', 'head']
@@ -42,13 +42,19 @@ CHAIN_COLLIDERS = {'coda': ['Body', 'head'], 'ciocca destra': ['Body'], 'ciocca 
 BONE_COLLIDERS = {b: CHAIN_COLLIDERS[ch] for ch, bones in CHAINS.items() for b, *_ in bones}
 # largest push out of the body per substep (None = at once); the stiff side locks are
 # moved out gradually so a contact does not make them pop
-CHAIN_MAX_PUSH = {'coda': None, 'ciocca destra': 0.003, 'ciocca sinistra': 0.003}
+CHAIN_MAX_PUSH = {'coda': None, 'ciocca destra': 0.005, 'ciocca sinistra': 0.005}
+# chains whose upper bones also keep the chain tip out of the body, so a lock lying on
+# the chest bends along its length instead of folding at the tip
+TIP_GUARD = ('ciocca destra', 'ciocca sinistra')
 BONE_MAX_PUSH = {b: CHAIN_MAX_PUSH[ch] for ch, bones in CHAINS.items() for b, *_ in bones}
 # largest bend (degrees) of a bone away from its rest direction under the parent
-CHAIN_MAX_ANGLE = {'coda': None, 'ciocca destra': 70.0, 'ciocca sinistra': 70.0}
+# the ponytail limit keeps it from flying over the head or folding back in fast moves
+# (run, dash, a bouncy happy walk); a bow still lets it fall, bending over several bones
+CHAIN_MAX_ANGLE = {'coda': 65.0, 'ciocca destra': 70.0, 'ciocca sinistra': 70.0}
 BONE_MAX_ANGLE = {b: CHAIN_MAX_ANGLE[ch] for ch, bones in CHAINS.items() for b, *_ in bones}
 SUBSTEPS = 4
-PREROLL = 60          # substeps run on the first frame so the clip starts settled
+PREROLL = 240         # substeps (2 s) on the first frame so the clip starts settled
+PREROLL_DRAG = 0.15   # extra damping while settling (a clip may start away from rest)
 GRAVITY = 9.81        # m/s^2, divided by the armature scale below
 SLOW_MODIFIERS = {'SUBSURF', 'SOLIDIFY', 'MASK'}
 
@@ -172,6 +178,14 @@ class HairSim:
             u = (self.rest[b] @ self.lever_local[b])[:3] - head
             u /= np.linalg.norm(u)
             self.g_rest[b] = self.g - np.dot(self.g, u) * u
+        # chain tip in the local frame of each upper bone of the guarded chains
+        self.tip_local, self.tip_radius = {}, {}
+        for name in TIP_GUARD:
+            ch = CHAINS[name]
+            tip = ch[-1][0]
+            tip_rest = (self.rest[tip] @ self.lever_local[tip])[:3]
+            for b, *_ in ch[:-1]:
+                self.tip_local[b] = (np.linalg.inv(self.rest[b]) @ np.append(tip_rest, 1.0))[:3]
 
     # -- helpers
     def _carried(self, parent_pose, parent, b):
@@ -198,6 +212,10 @@ class HairSim:
                     d0, _ = self.surface.signed(head + (rest_end - head) * frac, BONE_COLLIDERS[b])
                     rr.append(None if (r <= 0 or d0 < 0.002) else min(r, d0 - 0.002))
                 self.radius[b] = rr
+                if b in self.tip_local:
+                    tip_rest = (self.rest[b] @ np.append(self.tip_local[b], 1.0))[:3]
+                    d0, _ = self.surface.signed(tip_rest, BONE_COLLIDERS[b])
+                    self.tip_radius[b] = None if (r <= 0 or d0 < 0.002) else min(r, d0 - 0.002)
 
     def run(self, F):
         """Simulate frames 1..F of the active action; return {bone: (F,4,4) matrix_basis}."""
@@ -241,7 +259,7 @@ class HairSim:
                         # carried target, so steady walking adds no lag but accelerations swing
                         vt = target - tp[b]
                         v = vt if (f == 1 and s == 0) else x[b] - xp[b]
-                        v = v - drag * (v - vt)
+                        v = v - (max(drag, PREROLL_DRAG) if f == 0 else drag) * (v - vt)
                         nx = x[b] + v + (k * (target - x[b]) + g_eff) * dt * dt
                         nx = h + (nx - h) / max(np.linalg.norm(nx - h), 1e-9) * L
                         for frac, r in zip((0.5, 1.0), self.radius[b]):
@@ -251,6 +269,19 @@ class HairSim:
                             d, n = self.surface.signed(p, BONE_COLLIDERS[b])
                             if d < r:
                                 push = (r - d) / frac
+                                if BONE_MAX_PUSH[b] is not None and f > 0:
+                                    push = min(push, BONE_MAX_PUSH[b])
+                                nx = nx + n * push
+                                nx = h + (nx - h) / max(np.linalg.norm(nx - h), 1e-9) * L
+                        if self.tip_radius.get(b) is not None:
+                            # where the chain tip would be if the bones below kept their
+                            # rest bend: turn this bone so the whole lock stays out
+                            Sx = _rot_between(target - h, nx - h)
+                            p = h + Sx @ (C[:3, :3] @ self.tip_local[b])
+                            d, n = self.surface.signed(p, BONE_COLLIDERS[b])
+                            r = self.tip_radius[b]
+                            if d < r:
+                                push = (r - d) * L / max(np.linalg.norm(p - h), 1e-6)
                                 if BONE_MAX_PUSH[b] is not None and f > 0:
                                     push = min(push, BONE_MAX_PUSH[b])
                                 nx = nx + n * push

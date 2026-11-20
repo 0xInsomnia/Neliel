@@ -152,9 +152,15 @@ dalle shape key). Per ogni sotto-passo (4 per fotogramma):
 - collisioni con la superficie deformata di `Body` (e `head` per la coda),
   vertice più vicino e normale; raggio mai maggiore dello spazio a riposo.
 
-Le ciocche laterali sono rigide (molle alte), escono dal corpo al massimo di
-3 mm per sotto-passo e non si piegano oltre 70°, per evitare scatti. I
-parametri sono in `CHAINS` in cima al file.
+La simulazione si assesta per 2 s, con più smorzamento, sul primo fotogramma,
+perché una clip può partire lontano dalla posa di riposo. Ogni osso della coda
+non si piega oltre 65° rispetto alla sua forma di riposo: nella corsa o in una
+camminata saltellante la coda non vola sopra la testa e non si ripiega, mentre
+nell'inchino cade comunque, piegandosi su più ossa. Le ciocche laterali sono
+rigide, escono dal corpo al massimo di 5 mm per sotto-passo, non si piegano
+oltre 70°, e anche le loro ossa superiori controllano dove finisce la punta:
+una ciocca che tocca il petto (testa china) si sposta tutta invece di
+ripiegarsi in punta. I parametri sono in `CHAINS` in cima al file.
 
 ## Retarget
 
