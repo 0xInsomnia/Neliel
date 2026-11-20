@@ -1,3 +1,22 @@
+# Capelli corretti per le nuove clip — 20 novembre 2026
+
+Problemi visti nei render delle 37 nuove clip: in `walk_happy` la coda volava
+sopra la testa nei primi fotogrammi (assestamento troppo breve, la clip parte
+lontano dal riposo), in corsa e scatto si piegava fino a 140–160°, e nelle clip
+tristi le ciocche laterali entravano nel petto (fino al 64% dei fotogrammi).
+
+`hair_physics.py`: assestamento di 2 s con più smorzamento, limite di 65° per
+osso della coda e più smorzamento, ciocche più sensibili alla gravità e con le
+ossa superiori che tengono fuori dal corpo anche la punta.
+
+Verifiche su 49 clip: piega massima della coda da 161° a 65°, delle ciocche da
+70° a 48°; capelli dentro il corpo solo in `dash_feminine` (1%, 4,5 mm) e
+`dash_normal` (1 fotogramma, 11 mm) contro 4 clip prima; 42 clip su 49 con
+variazioni fra fotogrammi entro 20° (le altre: corsa, scatto, movimenti rapidi,
+fino a 30°). Render prima/dopo di `walk_happy` e `dash_feminine` controllati.
+
+---
+
 # 37 nuove clip Bandai: spostamenti ed emozioni — 20 novembre 2026
 
 Scaricate dal repository pubblico Bandai Namco (dataset 1) 37 clip: corsa,

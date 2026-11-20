@@ -206,8 +206,10 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
 - `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
   Workbench: non sono usate.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
-  ciocche, nessuna collisione tra capelli o con i vestiti; in `walk_feminine`
-  le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2,2 cm).
+  ciocche, nessuna collisione tra capelli o con i vestiti. Su 49 clip i capelli
+  entrano nel corpo solo nello scatto (`dash_feminine` 1% dei fotogrammi, 4,5 mm;
+  `dash_normal` 1 fotogramma, 11 mm); in corsa e scatto la coda cambia fino a
+  30° fra un fotogramma e l'altro.
 - Nell'inchino la coda cade solo in parte: la base (`Bip40`) è più rigida
   perché, rialzandosi, la coda torni dietro la schiena invece di restare sulla
   spalla.
