@@ -1,3 +1,14 @@
+# Render di controllo di tutte le 49 clip — 20 novembre 2026
+
+Render Workbench (solo texture, non i materiali finali), vista di tre quarti,
+15 fps (un fotogramma su due), camera che segue il bacino, dal file prodotto
+dopo la correzione dei capelli. 49 clip su 49 senza errori, 4157 fotogrammi;
+poster di metà clip controllati: personaggio sempre inquadrato. Video e
+galleria restano fuori dal repository (dati Bandai CC BY-NC, solo uso
+personale). Restano valide le limitazioni elencate sotto.
+
+---
+
 # Capelli corretti per le nuove clip — 20 novembre 2026
 
 Problemi visti nei render delle 37 nuove clip: in `walk_happy` la coda volava
