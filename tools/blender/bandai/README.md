@@ -12,7 +12,7 @@ repository.
 ## Uso
 
 Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py`,
-`hand_pose.py` e la cartella `bvh/` accanto al `.blend`, poi:
+`hand_pose.py`, `face_anim.py` e la cartella `bvh/` accanto al `.blend`, poi:
 
 ```sh
 blender -b Neliel_rig_fasce_test_02.blend --python apply_bandai.py -- \
@@ -30,6 +30,7 @@ Opzioni:
 - `--compress`: salva il file compresso.
 - `--no-hair`: salta la fisica dei capelli.
 - `--no-fingers`: lascia le dita a riposo.
+- `--no-face`: niente battiti di ciglia, sguardo o espressioni (e nessun driver aggiunto).
 
 Lo script non scrive mai il file aperto: rifiuta un `--out` uguale al file
 sorgente. Imposta la scena a 30 fps, assegna a `Jean` la prima clip e mette il
@@ -53,6 +54,8 @@ della clip.
 | `Root`, `Hips`, `Chest`, `NeckControl`, `ToeIK.L/R` | una chiave a riposo, liberi per le modifiche |
 | `Bip31`, `Bip40`–`Bip42` (coda), `Bip29/36/37`, `Bip30/38/39` (ciocche) | fisica dei capelli calcolata e salvata come chiavi |
 | `l/rThumb1`, `l/rIndex1`, `l/rMid1`, `l/rRing1`, `l/rPinky1`, `l/rCarpal4` | posa delle dita (`hand_pose.py`): le altre falangi e i carpi copiano questi controlli |
+| `両目` | sguardo (`face_anim.py`) |
+| `Root["Viso_ciglia"]`, `["Viso_occhi_felici"]`, `["Viso_sorriso"]`, `["Viso_bocca"]` | viso (`face_anim.py`), tramite driver sulle shape key |
 
 I pole sono messi dal lato in cui si piega l'arto nella mocap; con l'arto quasi
 dritto seguono l'orientamento del segmento superiore.
@@ -66,6 +69,30 @@ lontano dal corpo (saluti, indicazioni). L'asse di piegatura di ogni dito è
 calcolato dalla geometria di riposo, perpendicolare al dito e alla normale del
 palmo; il passaggio fra le due pose è filtrato su 0,15 s. Angoli e soglie sono
 in cima al file.
+
+## Viso
+
+La testa anime (`head`) è modellata dalle shape key MMD, non dalle ossa del viso
+Daz (che non pesano su nessuna mesh visibile). In Blender 4.3 una Action
+dell'armatura non può animare le shape key, quindi lo script aggiunge al rig, nella
+copia, quattro proprietà su `Root` (chiavi nella Action di ogni clip) e sei driver:
+
+| Proprietà | Shape key |
+| --- | --- |
+| `Viso_ciglia` | `ウィンク２`, `ｳｨﾝｸ２右` (occhi chiusi neutri), ridotti da `Viso_occhi_felici` |
+| `Viso_occhi_felici` | `ウィンク`, `ウィンク右` (occhi chiusi ad arco) |
+| `Viso_sorriso` | `口角上げ`, dal valore del file (0,38) a 1 |
+| `Viso_bocca` | `あ` |
+
+Con le proprietà a 0 il viso è identico al file originale. Quelle sei shape key
+non si muovono più a mano, ma dalle proprietà su `Root`; il loro valore originale
+è salvato sul datablock delle shape key (`neliel_base:<nome>`).
+
+Animazione: battiti di ciglia ogni 1,8–4,5 s (più uno quando la testa gira di
+scatto), piccoli movimenti degli occhi (±3°/±2°) e occhi che anticipano la testa
+nelle rotazioni, espressioni per clip (`EXPRESSIONS`) che seguono il gesto
+(mano che si apre, o la profondità dell'inchino). Sono un'interpretazione: la
+mocap non contiene il viso.
 
 ## Fisica dei capelli
 
@@ -119,8 +146,10 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
   differire dal retarget (fino a circa 58° sul braccio e 28° sulla coscia),
   mentre posizioni e direzioni restano entro pochi gradi.
 - Dita ricostruite dalla posizione della mano, non registrate: niente pugni o
-  dita che indicano; le mani giunte si compenetrano. Viso non animato; i piedi
-  non sono bloccati a terra durante l'appoggio.
+  dita che indicano; le mani giunte si compenetrano. Viso interpretato (niente
+  labiale reale); i piedi non sono bloccati a terra durante l'appoggio.
+- `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
+  Workbench: non sono usate.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
   ciocche, nessuna collisione tra capelli o con i vestiti; in `walk_feminine`
   le ciocche laterali toccano ancora la spalla (13% dei fotogrammi, fino a 2,2 cm).

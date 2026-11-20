@@ -42,6 +42,7 @@ if HERE not in sys.path:
 from retarget import retarget  # noqa: E402  (bvh.py and retarget.py live next to this script)
 import hair_physics  # noqa: E402
 import hand_pose  # noqa: E402
+import face_anim  # noqa: E402
 
 ARM_NAME = 'Jean'
 FPS = 30
@@ -80,6 +81,7 @@ def parse_args():
     ap.add_argument('--compress', action='store_true', help='save the output compressed')
     ap.add_argument('--no-hair', action='store_true', help='skip the baked hair physics')
     ap.add_argument('--no-fingers', action='store_true', help='leave the fingers at rest')
+    ap.add_argument('--no-face', action='store_true', help='no blinks, gaze or expressions')
     a = ap.parse_args(argv)
     a.clips = [c for c in a.clips.split(',') if c] or DEFAULT_CLIPS
     return a
@@ -299,11 +301,14 @@ def protect_actions(arm, actions, keyed, snapshot):
         added = 0
         for bname, prop, i in sorted(keyed):
             pb = arm.pose.bones[bname]
-            path = pb.path_from_id(prop)
+            if prop.startswith('['):  # custom property added by this script (face)
+                path, value = pb.path_from_id() + prop, 0.0
+            else:
+                path, value = pb.path_from_id(prop), snapshot[bname][prop][i]
             if (path, i) in have:
                 continue
             fc = new_fcurve(act, arm, path, i, bname)
-            write_curve(fc, np.array([act.frame_range[0]], np.float32), np.array([snapshot[bname][prop][i]]))
+            write_curve(fc, np.array([act.frame_range[0]], np.float32), np.array([value]))
             added += 1
         print(f'"{act.name}": {added} rest keys added for channels animated only by the clips')
     arm.animation_data.action = current
@@ -343,11 +348,26 @@ def forearm_twist(arm, F):
     return out
 
 
-def build_action(arm, name, basis, F, keyed, hair=True):
+def key_props(arm, act, props, F, keyed, bone='Root'):
+    """Key custom properties of a pose bone (the face controls)."""
+    frames = np.arange(1, F + 1, dtype=np.float32)
+    path0 = arm.pose.bones[bone].path_from_id()
+    for name, vals in props.items():
+        fc = new_fcurve(act, arm, f'{path0}["{name}"]', 0, 'Viso')
+        if np.allclose(vals, vals[0], atol=1e-6):
+            write_curve(fc, frames[:1], vals[:1])
+        else:
+            write_curve(fc, frames, vals)
+        keyed.add((bone, f'["{name}"]', 0))
+
+
+def build_action(arm, name, basis, F, keyed, hair=True, props=None):
     act = new_action(arm, name)
     act.use_frame_range = True
     act.frame_start, act.frame_end = 1, F
     key_basis(arm, act, basis, F, keyed)
+    if props:
+        key_props(arm, act, props, F, keyed)
     key_basis(arm, act, forearm_twist(arm, F), F, keyed)
     if hair:
         key_basis(arm, act, hair_physics.simulate(arm, F), F, keyed)
@@ -399,6 +419,8 @@ def main():
             act.use_fake_user = True
             print(f'fake user set on existing action "{act.name}"')
     sc.render.fps, sc.render.fps_base = FPS, 1.0
+    if not a.no_face:
+        face_anim.setup(arm)
     made = []
     keyed = set()
     for clip in a.clips:
@@ -408,9 +430,16 @@ def main():
         if abs(r['fps'] - FPS) > 0.01:
             print(f'warning: {clip} is {r["fps"]:.2f} fps, keyed 1:1 at {FPS} fps')
         basis = solve_controls(arm, bones, r)
+        bidx = {b['name']: i for i, b in enumerate(bones)}
         if not a.no_fingers:
-            basis.update(hand_pose.finger_bases(arm, r, {b['name']: i for i, b in enumerate(bones)}))
-        act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair)
+            basis.update(hand_pose.finger_bases(arm, r, bidx))
+        props = None
+        if not a.no_face:
+            gesture = np.maximum(hand_pose.openness(arm, r, bidx, 'l'), hand_pose.openness(arm, r, bidx, 'r'))
+            face = face_anim.animate(arm, r, bidx, clip, gesture)
+            basis[face_anim.EYE_BONE] = face['eyes']
+            props = face['props']
+        act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair, props=props)
         made.append((act, r))
         print(f'{clip}: {r["F"]} frames, {len(basis)} controls, {time.time() - t0:.1f}s')
     protect_actions(arm, user_actions, keyed, snapshot)

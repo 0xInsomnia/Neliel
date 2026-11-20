@@ -1,3 +1,20 @@
+# Viso per le clip Bandai — 20 novembre 2026
+
+La testa visibile (`head`) usa shape key MMD; le ossa del viso Daz non pesano su
+mesh visibili. Nuovo `tools/blender/bandai/face_anim.py`: quattro proprietà su
+`Root` (`Viso_ciglia`, `Viso_occhi_felici`, `Viso_sorriso`, `Viso_bocca`) con
+chiavi nella Action di ogni clip e driver su sei shape key; sguardo con l'osso
+`両目`. Battiti di ciglia (circa 18 al minuto), piccoli movimenti degli occhi,
+espressioni per clip legate al gesto.
+
+Verifiche (bpy 4.3.0; un passaggio con 5.3.0): con le proprietà a 0 il viso è
+identico all'originale pixel per pixel; "Prova" invariata; corpo e capelli
+identici alla versione precedente; primi piani e video del viso controllati.
+Limiti: espressioni interpretate, nessun labiale; `照れ`/`なごみ`/`はぅ` esclusi
+per texture mancante.
+
+---
+
 # Dita per le clip Bandai — 19 novembre 2026
 
 La mocap non contiene le dita: le mani restavano piatte. Nuovo
