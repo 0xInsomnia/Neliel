@@ -1,3 +1,19 @@
+# Piedi bloccati a terra — 20 novembre 2026
+
+Nuovo `tools/blender/bandai/foot_lock.py`: durante l'appoggio il tallone (poi
+l'avampiede) resta fermo e la direzione del piede non ruota; correzione
+orizzontale di piede e dita nel retarget, l'IK piega la gamba.
+
+Verifiche con le stesse soglie del blocco (punto entro 1 cm dalla quota minima,
+sotto 0,25 m/s): scivolamento per appoggio da 10–41 mm a 0 mm (tallone) e
+2–4 mm (avampiede) nelle camminate, 0–3 mm in 8 clip su 12. Nessuno scatto in
+più a coscia e tibia (stessi massimi fra fotogrammi). Capelli, viso e "Prova"
+invariati. Restano 6–14 mm dove la gamba dell'attrice è completamente tesa
+(`byebye_normal`, `guide_normal`, `call_normal`, `bye_normal`): servirebbe
+abbassare il bacino.
+
+---
+
 # Viso per le clip Bandai — 20 novembre 2026
 
 La testa visibile (`head`) usa shape key MMD; le ossa del viso Daz non pesano su

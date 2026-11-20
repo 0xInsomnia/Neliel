@@ -12,7 +12,8 @@ repository.
 ## Uso
 
 Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py`,
-`hand_pose.py`, `face_anim.py` e la cartella `bvh/` accanto al `.blend`, poi:
+`hand_pose.py`, `face_anim.py`, `foot_lock.py` e la cartella `bvh/` accanto al
+`.blend`, poi:
 
 ```sh
 blender -b Neliel_rig_fasce_test_02.blend --python apply_bandai.py -- \
@@ -31,6 +32,7 @@ Opzioni:
 - `--no-hair`: salta la fisica dei capelli.
 - `--no-fingers`: lascia le dita a riposo.
 - `--no-face`: niente battiti di ciglia, sguardo o espressioni (e nessun driver aggiunto).
+- `--no-foot-lock`: lascia scivolare i piedi come nella mocap.
 
 Lo script non scrive mai il file aperto: rifiuta un `--out` uguale al file
 sorgente. Imposta la scena a 30 fps, assegna a `Jean` la prima clip e mette il
@@ -59,6 +61,18 @@ della clip.
 
 I pole sono messi dal lato in cui si piega l'arto nella mocap; con l'arto quasi
 dritto seguono l'orientamento del segmento superiore.
+
+## Piedi bloccati a terra
+
+`foot_lock.py` segue tallone e avampiede di ogni piede. Un punto è in appoggio
+quando è entro 1 cm dalla sua quota minima e quasi fermo (con isteresi). Durante
+l'appoggio il punto a terra resta fermo: il tallone finché è giù, poi
+l'avampiede, che parte da dove era mostrato nel fotogramma prima. Anche la
+direzione del piede resta quella del primo contatto. Il blocco sposta e ruota
+in orizzontale piede e dita nel risultato del retarget, quindi `FootIK`, il pole
+del ginocchio e le verifiche usano la posizione bloccata. Dopo l'appoggio la
+correzione si azzera in 5 fotogrammi. Una correzione che richiederebbe una gamba
+più lunga del rig (o di quanto già chiede la mocap) viene ridotta.
 
 ## Dita
 
@@ -147,7 +161,10 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
   mentre posizioni e direzioni restano entro pochi gradi.
 - Dita ricostruite dalla posizione della mano, non registrate: niente pugni o
   dita che indicano; le mani giunte si compenetrano. Viso interpretato (niente
-  labiale reale); i piedi non sono bloccati a terra durante l'appoggio.
+  labiale reale).
+- Piedi: dove l'attrice tiene la gamba completamente tesa (`byebye_normal`,
+  `guide_normal`, `call_normal`, `bye_normal`) il piede non può restare fermo
+  senza abbassare il bacino e scivola ancora di 6–14 mm.
 - `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
   Workbench: non sono usate.
 - Fisica dei capelli approssimata: collisioni solo sui punti centrali delle

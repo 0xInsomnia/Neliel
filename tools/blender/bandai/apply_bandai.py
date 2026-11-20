@@ -43,6 +43,7 @@ from retarget import retarget  # noqa: E402  (bvh.py and retarget.py live next t
 import hair_physics  # noqa: E402
 import hand_pose  # noqa: E402
 import face_anim  # noqa: E402
+import foot_lock  # noqa: E402
 
 ARM_NAME = 'Jean'
 FPS = 30
@@ -82,6 +83,7 @@ def parse_args():
     ap.add_argument('--no-hair', action='store_true', help='skip the baked hair physics')
     ap.add_argument('--no-fingers', action='store_true', help='leave the fingers at rest')
     ap.add_argument('--no-face', action='store_true', help='no blinks, gaze or expressions')
+    ap.add_argument('--no-foot-lock', action='store_true', help='let planted feet slide as in the mocap')
     a = ap.parse_args(argv)
     a.clips = [c for c in a.clips.split(',') if c] or DEFAULT_CLIPS
     return a
@@ -429,6 +431,11 @@ def main():
         r = retarget(bones, path, foot_bones=FOOT)
         if abs(r['fps'] - FPS) > 0.01:
             print(f'warning: {clip} is {r["fps"]:.2f} fps, keyed 1:1 at {FPS} fps')
+        if not a.no_foot_lock:
+            st = foot_lock.lock_feet(arm, bones, r)
+            print(f'  {clip}: feet locked ' + ', '.join(
+                f'{s}: {v["contacts"]} contacts, shift up to {v["max_shift_mm"]:.0f} mm, turn up to {v["max_turn_deg"]:.0f} deg, {v["clamped"]} frames limited by leg length'
+                for s, v in st.items()))
         basis = solve_controls(arm, bones, r)
         bidx = {b['name']: i for i, b in enumerate(bones)}
         if not a.no_fingers:
