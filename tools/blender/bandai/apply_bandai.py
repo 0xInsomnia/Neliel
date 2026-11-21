@@ -44,6 +44,7 @@ import hair_physics  # noqa: E402
 import hand_pose  # noqa: E402
 import face_anim  # noqa: E402
 import foot_lock  # noqa: E402
+import arm_collision  # noqa: E402
 
 ARM_NAME = 'Jean'
 FPS = 30
@@ -96,6 +97,7 @@ def parse_args():
     ap.add_argument('--no-fingers', action='store_true', help='leave the fingers at rest')
     ap.add_argument('--no-face', action='store_true', help='no blinks, gaze or expressions')
     ap.add_argument('--no-foot-lock', action='store_true', help='let planted feet slide as in the mocap')
+    ap.add_argument('--no-arm-collision', action='store_true', help='let hands and forearms enter the chest as in the mocap')
     a = ap.parse_args(argv)
     a.clips = [c for c in a.clips.split(',') if c] or available_clips(a.bvh_dir)
     return a
@@ -228,8 +230,14 @@ def new_fcurve(action, arm, path, index, group):
     return fc or action.fcurves.new(path, index=index, action_group=group)
 
 
-def write_curve(fc, frames, values):
+def write_curve(fc, frames, values, replace=False):
     kp = fc.keyframe_points
+    if replace and len(kp):
+        if hasattr(kp, 'clear'):
+            kp.clear()
+        else:
+            while len(kp):
+                kp.remove(kp[-1], fast=True)
     kp.add(len(frames))
     co = np.empty(2 * len(frames), np.float32)
     co[0::2] = frames
@@ -276,7 +284,7 @@ def new_action(arm, name):
     return act
 
 
-def key_basis(arm, act, basis, F, keyed=None):
+def key_basis(arm, act, basis, F, keyed=None, replace=False):
     frames = np.arange(1, F + 1, dtype=np.float32)
     for bname, B in basis.items():
         pb = arm.pose.bones[bname]
@@ -286,9 +294,9 @@ def key_basis(arm, act, basis, F, keyed=None):
             for i in range(vals.shape[1]):
                 fc = new_fcurve(act, arm, path, i, bname)
                 if constant:
-                    write_curve(fc, frames[:1], vals[:1, i])
+                    write_curve(fc, frames[:1], vals[:1, i], replace)
                 else:
-                    write_curve(fc, frames, vals[:, i])
+                    write_curve(fc, frames, vals[:, i], replace)
                 if keyed is not None:
                     keyed.add((bname, prop, i))
 
@@ -375,13 +383,26 @@ def key_props(arm, act, props, F, keyed, bone='Root'):
         keyed.add((bone, f'["{name}"]', 0))
 
 
-def build_action(arm, name, basis, F, keyed, hair=True, props=None):
+def build_action(arm, name, basis, F, keyed, hair=True, props=None, arms=True):
     act = new_action(arm, name)
     act.use_frame_range = True
     act.frame_start, act.frame_end = 1, F
     key_basis(arm, act, basis, F, keyed)
     if props:
         key_props(arm, act, props, F, keyed)
+    if arms:
+        # before the forearm twist (it reads the evaluated hands) and the hair (it
+        # collides with the arms); the twist bones are not keyed yet: hold them at rest
+        # instead of the previous clip's last value
+        for s in 'lr':
+            for bone in TWIST_SHARE:
+                arm.pose.bones[s + bone].matrix_basis = Matrix.Identity(4)
+        st = arm_collision.resolve(arm, F, basis,
+                                   lambda b: key_basis(arm, act, b, F, keyed, replace=True))
+        mm = 1000 * arm.matrix_world.to_scale()[2]
+        print(f'  {name}: chest contacts ' + ', '.join(
+            f'{S}: {v["frames"]} frames moved up to {v["max_shift"] * mm:.0f} mm, '
+            f'inside {v["before"] * mm:.0f} -> {v["after"] * mm:.0f} mm' for S, v in st.items()))
     key_basis(arm, act, forearm_twist(arm, F), F, keyed)
     if hair:
         key_basis(arm, act, hair_physics.simulate(arm, F), F, keyed)
@@ -465,7 +486,8 @@ def main():
             face = face_anim.animate(arm, r, bidx, clip, gesture)
             basis[face_anim.EYE_BONE] = face['eyes']
             props = face['props']
-        act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair, props=props)
+        act = build_action(arm, clip, basis, r['F'], keyed, hair=not a.no_hair, props=props,
+                           arms=not a.no_arm_collision)
         made.append((act, r))
         print(f'{clip}: {r["F"]} frames, {len(basis)} controls, {time.time() - t0:.1f}s')
     protect_actions(arm, user_actions, keyed, snapshot)
