@@ -1,3 +1,25 @@
+# Export GLB delle clip e consegna — 21 novembre 2026
+
+Nuovo `tools/blender/bandai/export_glb.py` e nota `docs/HANDOFF_BANDAI.md` per
+chi continua. GLB del rig `Jean` con 50 animazioni (49 clip + "Prova"): 40 MB con
+texture WebP, 66 MB con PNG; `gltf-validator` 0 errori, 3 avvisi
+(`NODE_SKINNED_MESH_NON_ROOT`).
+
+Problemi trovati e risolti durante la prova: tempo sfasato di un fotogramma
+(clip ora da tempo 0); espressioni del viso a zero (i driver non esistono in
+glTF: cotti in Action di shape key per clip, unite con tracce NLA); corpo
+gonfio a gambe, fianchi e spalle anche a riposo (shape key del corpo relative a
+due chiavi diverse: forma fissata nella mesh).
+
+Verifiche in three.js su 7 clip: posizioni delle ossa uguali a Blender (0,0 mm
+in tutti i fotogrammi controllati), morph del viso uguali; render WebGL software
+di riposo e di 4 pose coerenti con Blender. Non verificato: tutte le clip una per
+una nel browser, materiali toon, prestazioni su telefono. L'app web usa ancora
+`assets/neliel-refined.glb` (scheletro VRoid diverso): integrazione da decidere
+(strade A/B nella nota di consegna).
+
+---
+
 # Scatti: avambraccio fuori dalla vita — 21 novembre 2026
 
 Negli scatti l'avambraccio entrava di 7–9 cm nella vita (confermato con render

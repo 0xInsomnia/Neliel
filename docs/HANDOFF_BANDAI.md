@@ -13,10 +13,11 @@ Prima di modificare il repository leggere `AGENTS.md`, `README.md`,
 - Ogni clip comprende: corpo (retarget sui controlli IK del rig), piedi bloccati
   a terra, mani fuori da seno e vita, dita ricostruite, viso (battiti di ciglia,
   sguardo, espressioni per stile), fisica dei capelli cotta in chiavi.
-- `neliel_jean_clips.glb` è l'export glTF dello stesso personaggio con tutte le
-  clip, pronto per three.js: animazioni cotte sulle ossa che deformano la mesh,
-  espressioni del viso come animazioni dei morph target. Verificato in three.js
-  (dettagli sotto).
+- `neliel_jean_clips.glb` è l'export glTF dello stesso personaggio con le 50
+  Action (49 clip + "Prova") come 50 animazioni, pronto per three.js: movimento
+  cotto sulle ossa che deformano la mesh, espressioni del viso come animazioni dei
+  morph target. 40 MB con texture WebP (66 MB con le PNG originali, opzione
+  `--images AUTO`). Verificato in three.js (dettagli sotto).
 - **L'app web del repository oggi NON usa questo modello**: carica
   `assets/neliel-refined.glb`, uno scheletro diverso (VRoid, `J_Bip_*`). Vedi
   "Integrazione nell'app web".
@@ -103,7 +104,8 @@ bacino): per un'animazione sul posto va tolta la traslazione orizzontale.
    0, oggetti visibili e renderizzabili, **senza modificatori** (niente
    suddivisione né contorno solidify: le shape key restano).
 
-Verifiche fatte su `walk_normal`, `bow_feminine`, `guide_feminine`:
+Verifiche fatte su `walk_normal`, `bow_feminine`, `guide_feminine` e, nel GLB
+completo, anche su `dash_feminine`, `walk_not-confident`, `byebye_happy`:
 
 - posizioni di mani, piedi, avambraccio, testa, petto e ciocche in three.js
   (`AnimationMixer`) uguali a Blender: scarto 0,0 mm in tutti i fotogrammi
@@ -113,8 +115,9 @@ Verifiche fatte su `walk_normal`, `bow_feminine`, `guide_feminine`:
 - `gltf-validator`: 0 errori, 3 avvisi `NODE_SKINNED_MESH_NON_ROOT` (mesh
   skinnate figlie dell'armatura: three.js le gestisce);
 - render three.js (WebGL software) della posa di riposo, `bow_feminine`
-  fotogramma 100 e `guide_feminine` fotogramma 33: corrispondono ai render di
-  Blender.
+  fotogramma 100, `guide_feminine` fotogramma 33 e `byebye_happy` fotogramma 40:
+  corrispondono ai render di Blender; texture PNG e WebP indistinguibili a
+  questa scala.
 
 Attenzione: il tempo glTF 0 corrisponde al fotogramma 1 di Blender
 (`tempo = (fotogramma - 1) / 30`).
@@ -143,8 +146,8 @@ Due strade:
   capelli, piedi bloccati e correzioni di mani/seno andrebbero rifatte per quello
   scheletro.
 
-Peso: le texture incorporate sono circa 27 MB in PNG (con `--images WEBP` molto
-meno); le animazioni circa 3 MB ogni 1000 fotogrammi. Per il web conviene
+Peso del GLB completo: animazioni 25 MB (circa 3 MB ogni 1000 fotogrammi), mesh
+2 MB, texture 27 MB in PNG oppure 0,8 MB in WebP. Per il web conviene
 comprimere (es. `gltf-transform`: resample, quantize, texture WebP/KTX2) e
 magari caricare le clip separatamente.
 
