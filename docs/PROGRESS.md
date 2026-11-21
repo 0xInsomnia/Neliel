@@ -1,3 +1,33 @@
+# Mani fuori dal petto e capelli fuori dal corpo — 21 novembre 2026
+
+Segnalato: nell'inchino femminile e nell'indicazione braccia e capelli
+entravano nel seno. Il controllo precedente sui capelli guardava solo due punti
+per osso e diceva "coda mai dentro il corpo": era sbagliato. Misurando la mesh
+intera, i capelli entravano di oltre 5 mm in almeno il 10% dei fotogrammi in 42
+clip su 49, e mani e avambracci in 13 clip (fino ad almeno 7 cm).
+
+Nuovo `tools/blender/bandai/arm_collision.py`: dopo le chiavi, ogni fotogramma
+viene valutato e `HandIK` spostato fuori dal busto (pelle più altezza della
+fascia dove la copre), con la correzione smussata nel tempo. `hair_physics.py`:
+collisioni su 14 vertici per osso calcolati con i pesi reali della mesh, 4
+vertici del corpo mediati per la normale, contatti senza rimbalzo, 1,2 cm dalla
+pelle, rotazioni smussate di 1 fotogramma. Due tentativi scartati: la fascia
+come ostacolo (bordo aperto: distanze sbagliate, mani spostate fino a 10 cm
+senza motivo) e l'interpolazione del corpo fra fotogrammi (nessun
+miglioramento).
+
+Verifiche sul file rigenerato (49 clip, `--verify`): mani e avambracci dentro il
+busto di oltre 5 mm in almeno il 10% dei fotogrammi in 2 clip (prima 13: restano
+gli scatti); capelli in 14 clip (prima 42); tremolio delle punte (95° percentile
+dell'accelerazione) simile o minore nella maggior parte delle clip, salito al
+massimo a 16 mm/fotogramma² (`respond_normal`). "Prova" invariata dopo aver
+suonato una clip (scarto massimo 3,5e-5), 50 Action con 381 canali ciascuna,
+30 fps. Primi piani prima/dopo di `bow_feminine` (fotogrammi 60, 100, 143, 187)
+e `guide_feminine` (33, 139) controllati: la mano si appoggia sul seno, le
+ciocche non attraversano più la fascia. Limiti rimasti nel README della cartella.
+
+---
+
 # Render di controllo di tutte le 49 clip — 20 novembre 2026
 
 Render Workbench (solo texture, non i materiali finali), vista di tre quarti,

@@ -232,11 +232,19 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
 - `dash_normal` dura solo 20 fotogrammi (così nel dataset).
 - `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
   Workbench: non sono usate.
-- Fisica dei capelli approssimata: collisioni solo sui punti centrali delle
-  ciocche, nessuna collisione tra capelli o con i vestiti. Su 49 clip i capelli
-  entrano nel corpo solo nello scatto (`dash_feminine` 1% dei fotogrammi, 4,5 mm;
-  `dash_normal` 1 fotogramma, 11 mm); in corsa e scatto la coda cambia fino a
-  30° fra un fotogramma e l'altro.
+- Mani e petto: nello scatto (`dash_feminine`, `dash_normal`) la mano che
+  oscilla dietro passa nel fianco largo del personaggio; spostare solo la mano
+  (fino a 11 cm) non basta, servirebbe allontanare anche il gomito: restano fino
+  a 79 mm nel 45% e 20% dei fotogrammi. Nelle altre 47 clip mani e avambracci
+  restano fuori (al massimo 7 mm, `call_normal`). Il test riguarda il busto, non
+  le cosce o il bacino.
+- Fisica dei capelli approssimata: nessuna collisione tra capelli o con i
+  vestiti (la fascia è coperta solo dalla distanza dalla pelle). Misura sulla mesh
+  intera dei capelli contro pelle del busto e braccia: 14 clip su 49 hanno
+  ancora vertici dentro di oltre 5 mm in almeno il 10% dei fotogrammi (prima
+  42), soprattutto dove una ciocca resta presa fra braccio e petto
+  (`bye_not-confident` 64%, `bye_happy` 52%, `call_normal` 45%) o la mano entra
+  nella coda (`bow_feminine`).
 - Nell'inchino la coda cade solo in parte: la base (`Bip40`) è più rigida
   perché, rialzandosi, la coda torni dietro la schiena invece di restare sulla
   spalla.
