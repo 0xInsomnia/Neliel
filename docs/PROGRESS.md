@@ -1,3 +1,25 @@
+# Scatti: avambraccio fuori dalla vita — 21 novembre 2026
+
+Negli scatti l'avambraccio entrava di 7–9 cm nella vita (confermato con render
+ai raggi X, non solo dalla misura). Il test del contatto ora usa il punto più
+vicino delle facce del busto, non il vertice; oltre 3,6 cm di profondità la
+mano viene spinta in fuori dall'asse della schiena (la superficie più vicina
+cambiava lato da un fotogramma all'altro e annullava la spinta), con il braccio
+teso si muove attorno alla spalla, limite 16 cm e 6 passate. Provato e scartato:
+spostare anche il pole del gomito (nessun effetto sugli scatti, cambiava i
+gomiti negli inchini).
+
+Verifiche sul file rigenerato (49 clip): nessuna clip con mano o avambraccio
+dentro il busto di oltre 5 mm in almeno il 10% dei fotogrammi (prima 13); il
+massimo rimasto è 6 mm in un fotogramma di `dash_feminine` (prima 96 mm).
+Velocità e accelerazione della mano in `dash_feminine` invariate (95° percentile
+41 mm/fotogramma²). Capelli come nella versione precedente (14 clip). "Prova"
+invariata (3,5e-5), 50 Action da 381 canali, 30 fps. Render Workbench di tutte
+le clip rifatto (4157 fotogrammi, nessun errore); viste da dietro e di 3/4 dello
+scatto femminile controllate: la mano passa accanto al bacino.
+
+---
+
 # Mani fuori dal petto e capelli fuori dal corpo — 21 novembre 2026
 
 Segnalato: nell'inchino femminile e nell'indicazione braccia e capelli
