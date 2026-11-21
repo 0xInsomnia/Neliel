@@ -101,15 +101,21 @@ più lunga del rig (o di quanto già chiede la mocap) viene ridotta.
 
 L'attrice ha un petto molto più piccolo di Neliel: quando porta una mano al
 petto, incrocia le braccia o tiene le mani davanti a sé, la mano di Neliel entra
-nel seno. `arm_collision.py`, dopo aver messo le chiavi dei controlli, valuta
-ogni fotogramma e misura i vertici di avambraccio, mano e dita contro la pelle
-del busto e la fascia (vertice più vicino e normale). Dove sono dentro, sposta il
-controllo `HandIK` dello spostamento minimo che li porta tutti fuori più 3,6 mm
-(minimi quadrati, al massimo 1,25 volte il punto più profondo per passata e
-11 cm in tutto); il gomito segue con l'IK. La correzione si estende ai
-fotogrammi vicini e viene smussata, quindi la mano si appoggia sul seno invece
-di saltare; il calcolo si ripete fino a 4 volte, finché resta meno di 1,8 mm
-dentro. La rotazione della mano non cambia.
+nel seno; correndo, l'avambraccio passa nella vita, più larga. `arm_collision.py`,
+dopo aver messo le chiavi dei controlli, valuta ogni fotogramma e misura i
+vertici di avambraccio, mano e dita contro la pelle del busto: punto più vicino
+delle facce e loro normale, tenendo in più l'altezza della fascia dove la copre
+(la fascia stessa non è usata: i suoi bordi aperti davano falsi contatti). Dove
+sono dentro, sposta il controllo `HandIK` dello spostamento minimo che li porta
+tutti fuori più 3,6 mm (minimi quadrati, al massimo 1,25 volte il punto più
+profondo per passata e 16 cm in tutto); il gomito segue con l'IK. Oltre 3,6 cm
+di profondità, se lo spostamento punta verso il corpo o l'avambraccio è lungo il
+fianco, la mano viene spinta in fuori dall'asse della schiena (lì la superficie
+più vicina passa da davanti a dietro da un fotogramma all'altro). Con il braccio
+quasi teso la mano si sposta attorno alla spalla, non oltre la sua portata. La
+correzione si estende ai fotogrammi vicini e viene smussata, quindi la mano si
+appoggia invece di saltare; il calcolo si ripete fino a 6 volte, finché resta
+meno di 1,8 mm dentro. La rotazione della mano non cambia.
 
 ## Dita
 
@@ -232,12 +238,6 @@ alla caviglia finché tocca il pavimento (`ball_contact`).
 - `dash_normal` dura solo 20 fotogrammi (così nel dataset).
 - `なごみ`, `はぅ`, `照れ` (rossore) mostrano una texture mancante nel render
   Workbench: non sono usate.
-- Mani e petto: nello scatto (`dash_feminine`, `dash_normal`) la mano che
-  oscilla dietro passa nel fianco largo del personaggio; spostare solo la mano
-  (fino a 11 cm) non basta, servirebbe allontanare anche il gomito: restano fino
-  a 79 mm nel 45% e 20% dei fotogrammi. Nelle altre 47 clip mani e avambracci
-  restano fuori (al massimo 7 mm, `call_normal`). Il test riguarda il busto, non
-  le cosce o il bacino.
 - Fisica dei capelli approssimata: nessuna collisione tra capelli o con i
   vestiti (la fascia è coperta solo dalla distanza dalla pelle). Misura sulla mesh
   intera dei capelli contro pelle del busto e braccia: 14 clip su 49 hanno

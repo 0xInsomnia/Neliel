@@ -3,8 +3,8 @@
 The capture actress has a much smaller chest than Neliel: when she puts a hand on her
 chest, crosses her arms or holds her hands in front of her, Neliel's hand and forearm
 end up inside the breasts.  After the controls are keyed, every frame is evaluated and
-the deformed forearm/hand vertices are tested against the deformed torso skin (nearest
-vertex + normal), keeping the height of the top where it covers the skin.  Where they are inside, the HandIK control is moved out
+the deformed forearm/hand vertices are tested against the deformed torso skin (closest
+point on its faces + face normal), keeping the height of the top where it covers the skin.  Where they are inside, the HandIK control is moved out
 by the smallest displacement that clears every penetrating vertex (plus MARGIN); the
 elbow follows through the arm IK.  The displacement is spread over neighbouring frames
 so the hand eases onto the surface instead of jumping, and the pass is repeated until
@@ -13,6 +13,7 @@ the remaining penetration is below TOLERANCE.
 import bpy
 import numpy as np
 from mathutils import kdtree
+from mathutils.bvhtree import BVHTree
 
 BODY = 'Body'
 TOP = 'Fascia rifatta · superiore'
@@ -26,9 +27,12 @@ LATERAL = 0.012       # a vertex counts only if it lies over the nearest surface
 TOP_COVER = 0.008     # skin vertices with top vertices this close are covered by the top
 SPREAD = 6            # frames over which a correction eases in and out
 SMOOTH = 2.5          # gaussian sigma (frames) of the correction
-PASSES = 4
+PASSES = 6
 MAX_STEP = 1.25       # one correction moves the hand at most this times the deepest point
-MAX_SHIFT = 0.09      # total correction of a hand (armature units, ~11 cm)
+MAX_SHIFT = 0.13      # total correction of a hand (armature units, ~16 cm: a sprint arm through the waist)
+DEEP = 0.03           # deeper than this, push out from the body axis (closest surface unreliable)
+SIDE = 0.08           # forearm this far to the side of the spine axis: along the waist
+STRAIGHT = 0.9        # shoulder-hand distance (fraction of the arm length) above which the arm counts as straight
 NEAR = 0.32           # frames with hand and forearm farther than this from the chest are skipped
 SLOW_MODIFIERS = {'SUBSURF', 'SOLIDIFY', 'MASK'}
 
@@ -74,9 +78,42 @@ class _Chest:
         bones = {b.name for b in arm.data.bones}
         dom = _dominant(self.body, bones)
         self.torso = np.array([i for i, d in enumerate(dom) if d in TORSO_BONES])
+        # torso faces (all corners on the torso), re-indexed into the torso vertex list
+        where = {v: k for k, v in enumerate(self.torso)}
+        self.faces = [[where[v] for v in poly.vertices] for poly in self.body.data.polygons
+                      if all(v in where for v in poly.vertices)]
         self.arm_idx = {s: np.array([i for i, d in enumerate(dom)
                                      if d[:1] == s and any(k in d for k in ARM_KEYS)]) for s, _ in SIDES}
         self.clear = None
+        bl = arm.data.bones
+        self.reach = {s: np.linalg.norm(np.array(bl[f'{s}ForearmBend'].head_local) - np.array(bl[f'{s}ShldrBend'].head_local))
+                      + np.linalg.norm(np.array(bl[f'{s}Hand'].head_local) - np.array(bl[f'{s}ForearmBend'].head_local))
+                      for s, _ in SIDES}
+
+    def radial(self, s):
+        """Unit direction from the spine axis to the forearm (across the axis), and how far
+        to the side of the body the forearm is."""
+        pose = self.arm.pose.bones
+        A, B = np.array(pose['abdomenLower'].head), np.array(pose['chestUpper'].head)
+        p = (np.array(pose[f'{s}ForearmBend'].head) + 2 * np.array(pose[f'{s}Hand'].head)) / 3
+        ax = (B - A) / np.linalg.norm(B - A)
+        r = p - A
+        r = r - np.dot(r, ax) * ax
+        lat = np.array(pose['lShldrBend'].head) - np.array(pose['rShldrBend'].head)
+        lat = lat - np.dot(lat, ax) * ax
+        lat /= max(np.linalg.norm(lat), 1e-9)
+        return r / max(np.linalg.norm(r), 1e-9), abs(float(np.dot(r, lat)))
+
+    def reach_plane(self, s):
+        """Projector removing the shoulder-to-hand direction when the arm is nearly straight
+        (the hand cannot move farther from the shoulder: the IK would not follow)."""
+        pose = self.arm.pose.bones
+        d = np.array(pose[f'{s}Hand'].head) - np.array(pose[f'{s}ShldrBend'].head)
+        n = np.linalg.norm(d)
+        if n < STRAIGHT * self.reach[s]:
+            return None, None
+        u = d / n
+        return np.eye(3) - np.outer(u, u), u
 
     def _clearance(self, bc, bn, inv):
         """Clearance per torso vertex: MARGIN, plus the top's height where it covers the skin.
@@ -98,13 +135,18 @@ class _Chest:
         return MARGIN + extra
 
     def penetration(self):
-        """Per side: (depth, normal) arrays of forearm/hand vertices inside the chest."""
+        """Per side: (depth, normal) arrays of forearm/hand vertices inside the chest.
+
+        Distances are to the closest point of the torso surface (faces, not vertices):
+        on the strongly curved side of a breast the nearest vertex's normal pointed
+        sideways and could report a hand lying in front of it as inside.
+        """
         inv = np.array(self.arm.matrix_world.inverted())
         bc, bn = _evaluated(self.body, inv)
         if self.clear is None:
             self.clear = self._clearance(bc, bn, inv)
-        c, n = bc[self.torso], bn[self.torso]
-        kd = _tree(c)
+            self.face_clear = np.array([self.clear[f].max() for f in self.faces])
+        bvh = BVHTree.FromPolygons([tuple(p) for p in bc[self.torso]], self.faces)
         out = {}
         pose = self.arm.pose.bones
         chest = np.array(pose['chestUpper'].head)
@@ -115,30 +157,34 @@ class _Chest:
                 out[s] = (np.zeros(0), np.zeros((0, 3)))
                 continue
             for p in bc[self.arm_idx[s]]:
-                _, i, d = kd.find(p)
-                if d > REACH:
+                loc, nrm, fi, d = bvh.find_nearest(p, REACH)
+                if loc is None:
                     continue
-                v = p - c[i]
-                sd = float(np.dot(v, n[i]))
-                if np.linalg.norm(v - sd * n[i]) > LATERAL:
-                    continue
-                if sd < self.clear[i]:
-                    depth.append(self.clear[i] - sd)
-                    normal.append(n[i])
+                v = p - np.array(loc)
+                nrm = np.array(nrm)
+                sd = float(np.dot(v, nrm))
+                if np.linalg.norm(v - sd * nrm) > LATERAL:
+                    continue  # closest point on the open border of the torso patch
+                if sd < self.face_clear[fi]:
+                    depth.append(self.face_clear[fi] - sd)
+                    normal.append(nrm)
             out[s] = (np.array(depth), np.array(normal).reshape(-1, 3))
         return out
 
 
-def _clearing_vector(depth, normal, iters=12):
+def _clearing_vector(depth, normal, iters=12, plane=None):
     """Displacement that clears the penetrating vertices in the least-squares sense.
 
     Minimises sum(max(0, depth_i - n_i.v)^2) + small * |v|^2 by re-solving on the
     vertices still inside; vertices pushing in opposite directions (a hand between the
     breasts) give a compromise instead of a runaway.  Capped at the deepest point.
+    With plane (a 3x3 projector) the displacement stays in that plane.
     """
     v = np.zeros(3)
     if len(depth) == 0:
         return v
+    if plane is not None:
+        normal = normal @ plane
     w = depth / depth.max()          # deeper vertices count more
     inside = np.ones(len(depth), bool)
     for _ in range(iters):
@@ -224,7 +270,20 @@ def resolve(arm, F, basis, rekey):
                     depth, normal = pen[s]
                     if len(depth):
                         worst[S] = max(worst[S], float(depth.max()) - MARGIN)
-                        D[S][f] = _clearing_vector(depth, normal)
+                        v = _clearing_vector(depth, normal)
+                        if depth.max() > DEEP:
+                            rad, side_off = chest.radial(s)
+                            if np.dot(v, rad) < 0 or side_off > SIDE:
+                                # deep inside with the forearm along the waist (a run) or
+                                # pushed toward the body axis: the closest surface flips
+                                # between front and back; push out from the axis instead
+                                v = rad * MAX_STEP * depth.max()
+                        plane, u = chest.reach_plane(s)
+                        if plane is not None and np.dot(v, u) > 0:
+                            # a straight arm (a sprint's back swing): move the hand around
+                            # the shoulder instead of out of reach
+                            v = _clearing_vector(depth, normal, plane=plane)
+                        D[S][f] = v
                     conv[S][f] = _to_basis(arm.pose.bones[f'HandIK.{S}'])
             if first is None:
                 first = dict(worst)
