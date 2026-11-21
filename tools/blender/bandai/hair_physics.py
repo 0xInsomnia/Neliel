@@ -9,7 +9,10 @@ shorter than the hair they drive), with:
 - real gravity, minus the small part that would bend the modelled rest shape (carried
   with the head): an upright head keeps the modelled shape, displaced hair falls back
   and a bowed head lets the hair hang,
-- collisions with the deformed body and head surfaces (nearest vertex + normal).
+- collisions with the deformed body and head surfaces (nearest vertex + normal),
+  tested at the lever points and at a spread of the hair-mesh vertices each bone moves
+  (skinned like the mesh), so the whole width and length of a lock stays out; the arms
+  are part of the body mesh, and the clearance from the skin covers the top (~4 mm).
 
 The result is keyed as rotations of the hair bones in the Action, like every other
 channel, so it plays and can be edited per clip.  Parameters are in CHAINS.
@@ -37,8 +40,23 @@ CHAINS = {
 HAIR_MESH = 'hair'
 COLLIDERS = ['Body', 'head']
 # surfaces each chain collides with: the side locks move with the head mesh already,
-# and contacts with cheek and jaw only made them flip
+# and contacts with cheek and jaw only made them flip.  The top is not a collider: its
+# open edge makes the nearest-vertex distance jump; the skin clearance covers it.
 CHAIN_COLLIDERS = {'coda': ['Body', 'head'], 'ciocca destra': ['Body'], 'ciocca sinistra': ['Body']}
+# hair-mesh vertices tested per bone, and the clearance kept for them; vertices close to
+# the bone root (less than SAMPLE_MIN_REACH of the lever) are left to the parent bone
+SAMPLES = 14
+SAMPLE_RADIUS = 0.010   # from the skin: the top (~4 mm) plus a few mm
+SAMPLE_MIN_REACH = 0.3
+SAMPLE_MIN_WEIGHT = 0.35
+SAMPLE_ITERS = 1
+SAMPLE_MAX_TURN = 0.05   # radians per substep: a contact moves the hair out over a few frames, without snapping
+# chains whose contacts and bend limit stop the hair instead of bouncing it: the
+# ponytail, pushed by the swinging arms, otherwise snaps away; the side locks lie on
+# the chest and stay smoother with the bounce
+CHAIN_NO_BOUNCE = {'coda': True, 'ciocca destra': False, 'ciocca sinistra': False}
+BONE_NO_BOUNCE = {b: CHAIN_NO_BOUNCE[ch] for ch, bones in CHAINS.items() for b, *_ in bones}
+SAMPLE_MAX_FIX = 0.6     # radians: a contact needing a larger turn of the bone is not its to fix
 BONE_COLLIDERS = {b: CHAIN_COLLIDERS[ch] for ch, bones in CHAINS.items() for b, *_ in bones}
 # largest push out of the body per substep (None = at once); the stiff side locks are
 # moved out gradually so a contact does not make them pop
@@ -57,6 +75,8 @@ PREROLL = 240         # substeps (2 s) on the first frame so the clip starts set
 PREROLL_DRAG = 0.15   # extra damping while settling (a clip may start away from rest)
 GRAVITY = 9.81        # m/s^2, divided by the armature scale below
 SLOW_MODIFIERS = {'SUBSURF', 'SOLIDIFY', 'MASK'}
+NEAREST = 4           # collider vertices blended per distance query
+OUTPUT_SMOOTH = 1.0   # gaussian sigma (frames) applied to the baked hair rotations
 
 
 def _rot_between(a, b):
@@ -75,10 +95,12 @@ def _rot_between(a, b):
 
 
 def _levers(arm, bones):
-    """Far end of the hair each bone moves, in armature space (rest pose)."""
+    """Far end of the hair each bone moves (armature space, rest pose), and the mesh
+    samples each bone is tested with: (rest position, {bone: weight})."""
     o = bpy.data.objects[HAIR_MESH]
     M = np.array(arm.matrix_world.inverted() @ o.matrix_world)
     names = {g.index: g.name for g in o.vertex_groups}
+    arm_bones = {b.name for b in arm.data.bones}
     # rest shape including the shape keys (the ponytail length comes from them):
     # evaluate the mesh with its armature modifiers switched off
     arm_mods = [m for m in o.modifiers if m.type == 'ARMATURE' and m.show_viewport]
@@ -100,18 +122,46 @@ def _levers(arm, bones):
         raise RuntimeError('hair mesh topology changes in evaluation; disable topology modifiers')
     co = co @ M[:3, :3].T + M[:3, 3]
     owned = {b: [] for b in bones}
+    weights = []
     for v in o.data.vertices:
+        ws = {names[g.group]: g.weight for g in v.groups if names.get(g.group) in arm_bones and g.weight > 0.01}
+        tot = sum(ws.values())
+        weights.append({k: w / tot for k, w in ws.items()} if tot > 0 else {})
         gs = [g for g in v.groups if names.get(g.group) in owned and g.weight > 0.3]
         if gs:
             owned[names[max(gs, key=lambda g: g.weight).group]].append(v.index)
     out = {}
+    samples = {}
     for b in bones:
         head = np.array(arm.data.bones[b].head_local)
         pts = co[owned[b]] if owned[b] else np.array([arm.data.bones[b].tail_local])
         d = np.linalg.norm(pts - head, axis=1)
         far = pts[d >= np.quantile(d, 0.8)] if len(pts) > 5 else pts
         out[b] = far.mean(axis=0)
-    return out
+        # vertices this bone moves most (in the skinned blend), spread over the stretch
+        mine = [k for k, w in enumerate(weights) if w and max(w, key=w.get) == b and w[b] >= SAMPLE_MIN_WEIGHT]
+        pick = _spread_idx(co[mine], SAMPLES) if mine else []
+        samples[b] = [(co[mine[k]], weights[mine[k]]) for k in pick]
+    return out, samples
+
+
+def _spread_idx(pts, n):
+    """Indices of n points of pts far from each other (farthest point sampling)."""
+    if len(pts) <= n:
+        return list(range(len(pts)))
+    pick = [int(np.argmax(np.linalg.norm(pts - pts.mean(axis=0), axis=1)))]
+    dist = np.linalg.norm(pts - pts[pick[0]], axis=1)
+    while len(pick) < n:
+        k = int(np.argmax(dist))
+        pick.append(k)
+        dist = np.minimum(dist, np.linalg.norm(pts - pts[k], axis=1))
+    return pick
+
+
+def _rotate(v, axis, theta):
+    """Rodrigues rotation of v about a unit axis."""
+    c, s_ = math.cos(theta), math.sin(theta)
+    return v * c + np.cross(axis, v) * s_ + axis * np.dot(axis, v) * (1 - c)
 
 
 class _Surface:
@@ -120,11 +170,13 @@ class _Surface:
     def __init__(self, arm):
         self.arm = arm
         self.objs = [bpy.data.objects[n] for n in COLLIDERS if n in bpy.data.objects]
+        self.keep = {}
+        self.parts = {}
 
     def update(self):
         dg = bpy.context.evaluated_depsgraph_get()
-        self.parts = {}
         inv = np.array(self.arm.matrix_world.inverted())
+        parts = {}
         for o in self.objs:
             oe = o.evaluated_get(dg)
             me = oe.to_mesh()
@@ -138,24 +190,37 @@ class _Surface:
             c = c.reshape(-1, 3) @ M[:3, :3].T + M[:3, 3]
             nn = nn.reshape(-1, 3) @ M[:3, :3].T
             nn /= np.maximum(np.linalg.norm(nn, axis=1, keepdims=True), 1e-9)
-            keep = c[:, 2] > 0.6
+            # same vertex set on every frame (chosen at the first evaluation, above the hips)
+            keep = self.keep.setdefault(o.name, c[:, 2] > 0.6)
             c, nn = c[keep], nn[keep]
             kd = kdtree.KDTree(len(c))
             for i, p in enumerate(c):
                 kd.insert(p, i)
             kd.balance()
-            self.parts[o.name] = (c, nn, kd)
+            parts[o.name] = (c, nn, kd)
+        self.parts = parts
 
     def signed(self, p, names=COLLIDERS):
-        """Signed distance along the normal of the nearest collider vertex."""
+        """Signed distance to the nearest collider, from its NEAREST closest vertices.
+
+        Distances to the tangent planes and the normals are blended by inverse distance:
+        a single nearest vertex makes the normal jump where two surfaces meet (arm and
+        chest), which made the hair flicker.
+        """
         best = None
         for n in names:
             if n not in self.parts:
                 continue
             c, nn, kd = self.parts[n]
-            _, i, dist = kd.find(p)
+            hits = kd.find_n(p, NEAREST)
+            dist = hits[0][2]
             if best is None or dist < best[0]:
-                best = (dist, float(np.dot(p - c[i], nn[i])), nn[i])
+                idx = [h[1] for h in hits]
+                ci, ni = c[idx], nn[idx]
+                w = 1.0 / (np.array([h[2] for h in hits]) + 1e-3)
+                sd = float(np.dot(w, np.einsum('ij,ij->i', p - ci, ni)) / w.sum())
+                nrm = (w[:, None] * ni).sum(axis=0)
+                best = (dist, sd, nrm / max(np.linalg.norm(nrm), 1e-9))
         return best[1], best[2]
 
 
@@ -166,8 +231,23 @@ class HairSim:
         self.g = np.array([0, 0, -GRAVITY / self.scale])
         bones = [b for ch in CHAINS.values() for b, *_ in ch]
         self.rest = {b.name: np.array(b.matrix_local) for b in arm.data.bones}
-        lever_pts = _levers(arm, bones)
+        lever_pts, sample_pts = _levers(arm, bones)
         self.lever_local = {b: np.linalg.inv(self.rest[b]) @ np.append(lever_pts[b], 1.0) for b in bones}
+        # mesh samples: rest position, position in this bone's rest frame, weight of this
+        # bone and the other bones of the blend (the hair mesh is smoothly skinned, a
+        # vertex follows two neighbouring bones)
+        self.samples = {}
+        for b in bones:
+            head = self.rest[b][:3, 3]
+            L = np.linalg.norm(lever_pts[b] - head)
+            keep = []
+            for p, w in sample_pts[b]:
+                if np.linalg.norm(p - head) < SAMPLE_MIN_REACH * L:
+                    continue
+                q = (np.linalg.inv(self.rest[b]) @ np.append(p, 1.0))[:3]
+                keep.append((np.append(p, 1.0), q, w[b], [(o, wo) for o, wo in w.items() if o != b]))
+            self.samples[b] = keep
+        self.sample_radius = {}
         self.surface = _Surface(arm)
         self.radius = {}
         # gravity component that is tangential to each lever at rest: removed (carried
@@ -212,10 +292,62 @@ class HairSim:
                     d0, _ = self.surface.signed(head + (rest_end - head) * frac, BONE_COLLIDERS[b])
                     rr.append(None if (r <= 0 or d0 < 0.002) else min(r, d0 - 0.002))
                 self.radius[b] = rr
+                sr = []
+                for p0, *_ in self.samples[b]:
+                    d0, _ = self.surface.signed(p0[:3], BONE_COLLIDERS[b])
+                    sr.append(None if d0 < 0.002 else min(SAMPLE_RADIUS, d0 - 0.002))
+                self.sample_radius[b] = sr
                 if b in self.tip_local:
                     tip_rest = (self.rest[b] @ np.append(self.tip_local[b], 1.0))[:3]
                     d0, _ = self.surface.signed(tip_rest, BONE_COLLIDERS[b])
                     self.tip_radius[b] = None if (r <= 0 or d0 < 0.002) else min(r, d0 - 0.002)
+
+    def _skin(self, name, last, Pr, root):
+        """Skinning matrix (pose @ rest^-1) of any bone the hair mesh is weighted to."""
+        if name in last:
+            P = last[name]
+        elif name in self.lever_local:
+            # not simulated yet: carried by its parent's latest pose
+            par = self.arm.data.bones[name].parent.name
+            P = (last[par] if par in last else self._carried(Pr, root, par)) @ np.linalg.inv(self.rest[par]) @ self.rest[name]
+        else:
+            # bones that are not simulated move with the head
+            P = self._carried(Pr, root, name)
+        return P @ np.linalg.inv(self.rest[name])
+
+    def _keep_samples_out(self, b, f, C, h, target, nx, L, last, Pr, root):
+        """Turn bone b (lever end nx) until its blended mesh samples are out of the body."""
+        fixed = []
+        for p0, q, wb, others in self.samples[b]:
+            fixed.append(sum((wo * (self._skin(o, last, Pr, root) @ p0)[:3] for o, wo in others), np.zeros(3)))
+        max_turn = SAMPLE_MAX_TURN
+        if BONE_MAX_PUSH[b] is not None and f > 0:
+            max_turn = min(max_turn, BONE_MAX_PUSH[b] / L)
+        for _ in range(SAMPLE_ITERS):
+            Rb = _rot_between(target - h, nx - h) @ C[:3, :3]
+            worst = None
+            for (p0, q, wb, others), fx, r in zip(self.samples[b], fixed, self.sample_radius[b]):
+                if r is None:
+                    continue
+                pb = Rb @ q + h
+                d, n = self.surface.signed(wb * pb + fx, BONE_COLLIDERS[b])
+                if d >= r:
+                    continue
+                cr = np.cross(pb - h, n)
+                sn = np.linalg.norm(cr)
+                if sn < 1e-6:
+                    continue
+                theta = (r - d) / (wb * sn)
+                if theta > SAMPLE_MAX_FIX:
+                    # turning this bone barely moves the point out (it lies along the
+                    # normal from the bone root): leave it to the bones above
+                    continue
+                if worst is None or theta > worst[0]:
+                    worst = (theta, cr / sn)
+            if worst is None:
+                break
+            nx = h + _rotate(nx - h, worst[1], min(worst[0], max_turn))
+        return nx
 
     def run(self, F):
         """Simulate frames 1..F of the active action; return {bone: (F,4,4) matrix_basis}."""
@@ -228,6 +360,7 @@ class HairSim:
         tp = {}
         dt = 1.0 / sc.render.fps / SUBSTEPS
         prev_root = None
+        last = {}   # latest pose of every simulated bone (this substep or the previous one)
         for f in range(F):
             sc.frame_set(f + 1)
             self.surface.update()
@@ -262,6 +395,7 @@ class HairSim:
                         v = v - (max(drag, PREROLL_DRAG) if f == 0 else drag) * (v - vt)
                         nx = x[b] + v + (k * (target - x[b]) + g_eff) * dt * dt
                         nx = h + (nx - h) / max(np.linalg.norm(nx - h), 1e-9) * L
+                        free = nx.copy()
                         for frac, r in zip((0.5, 1.0), self.radius[b]):
                             if r is None:
                                 continue
@@ -273,6 +407,10 @@ class HairSim:
                                     push = min(push, BONE_MAX_PUSH[b])
                                 nx = nx + n * push
                                 nx = h + (nx - h) / max(np.linalg.norm(nx - h), 1e-9) * L
+                        before = nx
+                        if self.samples[b]:
+                            nx = self._keep_samples_out(b, f, C, h, target, nx, L, last, Pr, root)
+                        sample_push = nx - before
                         if self.tip_radius.get(b) is not None:
                             # where the chain tip would be if the bones below kept their
                             # rest bend: turn this bone so the whole lock stays out
@@ -296,11 +434,28 @@ class HairSim:
                                 q = Matrix(S.tolist()).to_quaternion()
                                 q = Quaternion((1, 0, 0, 0)).slerp(q, lim / ang)
                                 nx = h + np.array(q.to_matrix()) @ a0
-                        xp[b], x[b], tp[b] = x[b], nx, target
+                        # contacts and the bend limit move the lever without giving it speed:
+                        # keep the free motion of this step, minus its part into the contact
+                        vel = free - x[b]
+                        dp = nx - free
+                        dn = np.linalg.norm(dp)
+                        if not BONE_NO_BOUNCE[b]:
+                            # bounce off the lever contacts as before, but the mesh-sample
+                            # contacts only move the lock (no speed: no flicking)
+                            vel = nx - x[b] - sample_push
+                            sn_ = np.linalg.norm(sample_push)
+                            if sn_ > 1e-9:
+                                nrm = sample_push / sn_
+                                vel = vel - min(0.0, float(np.dot(vel, nrm))) * nrm
+                        elif dn > 1e-9:
+                            nrm = dp / dn
+                            vel = vel - min(0.0, float(np.dot(vel, nrm))) * nrm
+                        xp[b], x[b], tp[b] = nx - vel, nx, target
                         P = np.eye(4)
                         P[:3, :3] = _rot_between(target - h, nx - h) @ C[:3, :3]
                         P[:3, 3] = h
                         poses[b] = P
+                        last[b] = P
                         parent, ppose = b, P
             prev_root = cur_root
             for b in out:
@@ -354,7 +509,27 @@ def simulate(arm, F):
         for pb in arm.pose.bones:
             pb.matrix_basis = saved[pb.name]
         arm.animation_data.action = saved_action
-        return sim.run(F)
+        return {b: _smooth_rotations(B, OUTPUT_SMOOTH) for b, B in sim.run(F).items()}
+
+
+def _smooth_rotations(B, sigma):
+    """Gaussian smoothing over frames of (F,4,4) rotations: removes the frame-rate
+    flicker that contacts leave on the hair, keeps the swing."""
+    if sigma <= 0 or len(B) < 3:
+        return B
+    q = np.array([np.array(Matrix(m[:3, :3].tolist()).to_quaternion()) for m in B])
+    for k in range(1, len(q)):
+        if np.dot(q[k], q[k - 1]) < 0:
+            q[k] = -q[k]
+    r = max(1, int(3 * sigma))
+    ker = np.exp(-0.5 * (np.arange(-r, r + 1) / sigma) ** 2)
+    ker /= ker.sum()
+    pad = np.pad(q, ((r, r), (0, 0)), mode='edge')
+    qs = np.stack([np.convolve(pad[:, j], ker, mode='valid') for j in range(4)], axis=1)
+    out = B.copy()
+    for k, qq in enumerate(qs):
+        out[k, :3, :3] = np.array(Quaternion(qq / np.linalg.norm(qq)).to_matrix())
+    return out
 
 
 def penetration(arm, F, bones=None):
