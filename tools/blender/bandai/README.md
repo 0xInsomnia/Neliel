@@ -44,6 +44,23 @@ con il valore del file originale, per ogni canale che le clip animano e loro no:
 senza, passando da una clip a "Prova" quei canali resterebbero nell'ultima posa
 della clip.
 
+## Export GLB per il web
+
+`export_glb.py` esporta personaggio e clip da un `.blend` già animato a un GLB
+per three.js: vincoli e IK cotti sulle ossa che deformano (campionando ogni
+fotogramma), espressioni del viso cotte nei morph target, una animazione glTF per
+clip che parte da tempo 0 (= fotogramma 1).
+
+```sh
+blender -b Neliel_bandai_test.blend --python export_glb.py -- \
+    --out neliel_jean_clips.glb [--clips walk_normal,bow_feminine] [--images WEBP]
+```
+
+Le shape key non animate (corpo, capelli) vengono fissate nella mesh: quelle del
+corpo sono relative a due chiavi diverse e glTF non lo può rappresentare. Niente
+modificatori (suddivisione, contorno). Dettagli, verifiche e integrazione
+nell'app in `docs/HANDOFF_BANDAI.md`.
+
 ## Clip e file BVH
 
 I BVH vengono dal repository pubblico
