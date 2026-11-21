@@ -3,8 +3,8 @@
 The capture actress has a much smaller chest than Neliel: when she puts a hand on her
 chest, crosses her arms or holds her hands in front of her, Neliel's hand and forearm
 end up inside the breasts.  After the controls are keyed, every frame is evaluated and
-the deformed forearm/hand vertices are tested against the deformed torso skin and the
-top (nearest vertex + normal).  Where they are inside, the HandIK control is moved out
+the deformed forearm/hand vertices are tested against the deformed torso skin (nearest
+vertex + normal), keeping the height of the top where it covers the skin.  Where they are inside, the HandIK control is moved out
 by the smallest displacement that clears every penetrating vertex (plus MARGIN); the
 elbow follows through the arm IK.  The displacement is spread over neighbouring frames
 so the hand eases onto the surface instead of jumping, and the pass is repeated until
@@ -23,6 +23,7 @@ MARGIN = 0.003        # clearance kept between hand and chest (armature units, ~
 TOLERANCE = 0.0015    # remaining penetration accepted after the last pass
 REACH = 0.08          # deepest penetration looked for
 LATERAL = 0.012       # a vertex counts only if it lies over the nearest surface vertex
+TOP_COVER = 0.008     # skin vertices with top vertices this close are covered by the top
 SPREAD = 6            # frames over which a correction eases in and out
 SMOOTH = 2.5          # gaussian sigma (frames) of the correction
 PASSES = 4
@@ -75,15 +76,35 @@ class _Chest:
         self.torso = np.array([i for i, d in enumerate(dom) if d in TORSO_BONES])
         self.arm_idx = {s: np.array([i for i, d in enumerate(dom)
                                      if d[:1] == s and any(k in d for k in ARM_KEYS)]) for s, _ in SIDES}
+        self.clear = None
+
+    def _clearance(self, bc, bn, inv):
+        """Clearance per torso vertex: MARGIN, plus the top's height where it covers the skin.
+
+        The top itself is not tested: near its open edges the nearest top vertex has a
+        normal along the band (up or down), which reported hands below the band as deep
+        inside.  The cover is measured once; the top is skinned to the same bones.
+        """
+        c, n = bc[self.torso], bn[self.torso]
+        extra = np.zeros(len(c))
+        if self.top is not None:
+            tc, _ = _evaluated(self.top, inv)
+            kd = _tree(tc)
+            for k, p in enumerate(c):
+                found = kd.find_range(p, TOP_COVER)
+                if found:
+                    # height of the top above this skin vertex, along its normal
+                    extra[k] = max(0.0, max(float(np.dot(np.array(q) - p, n[k])) for q, _, _ in found))
+        return MARGIN + extra
 
     def penetration(self):
         """Per side: (depth, normal) arrays of forearm/hand vertices inside the chest."""
         inv = np.array(self.arm.matrix_world.inverted())
         bc, bn = _evaluated(self.body, inv)
-        surfaces = [(bc[self.torso], bn[self.torso])]
-        if self.top is not None:
-            surfaces.append(_evaluated(self.top, inv))
-        trees = [_tree(c) for c, _ in surfaces]
+        if self.clear is None:
+            self.clear = self._clearance(bc, bn, inv)
+        c, n = bc[self.torso], bn[self.torso]
+        kd = _tree(c)
         out = {}
         pose = self.arm.pose.bones
         chest = np.array(pose['chestUpper'].head)
@@ -94,20 +115,16 @@ class _Chest:
                 out[s] = (np.zeros(0), np.zeros((0, 3)))
                 continue
             for p in bc[self.arm_idx[s]]:
-                best = None
-                for (c, n), kd in zip(surfaces, trees):
-                    _, i, d = kd.find(p)
-                    if d > REACH:
-                        continue
-                    v = p - c[i]
-                    sd = float(np.dot(v, n[i]))
-                    if np.linalg.norm(v - sd * n[i]) > LATERAL:
-                        continue
-                    if sd < MARGIN and (best is None or MARGIN - sd > best[0]):
-                        best = (MARGIN - sd, n[i])
-                if best is not None:
-                    depth.append(best[0])
-                    normal.append(best[1])
+                _, i, d = kd.find(p)
+                if d > REACH:
+                    continue
+                v = p - c[i]
+                sd = float(np.dot(v, n[i]))
+                if np.linalg.norm(v - sd * n[i]) > LATERAL:
+                    continue
+                if sd < self.clear[i]:
+                    depth.append(self.clear[i] - sd)
+                    normal.append(n[i])
             out[s] = (np.array(depth), np.array(normal).reshape(-1, 3))
         return out
 
