@@ -24,7 +24,9 @@ massimo a 16 mm/fotogramma² (`respond_normal`). "Prova" invariata dopo aver
 suonato una clip (scarto massimo 3,5e-5), 50 Action con 381 canali ciascuna,
 30 fps. Primi piani prima/dopo di `bow_feminine` (fotogrammi 60, 100, 143, 187)
 e `guide_feminine` (33, 139) controllati: la mano si appoggia sul seno, le
-ciocche non attraversano più la fascia. Limiti rimasti nel README della cartella.
+ciocche non attraversano più la fascia. Render Workbench di tutte le 49 clip
+rifatto (4157 fotogrammi, nessun errore; poster di metà clip controllati, nello
+scatto la coda vola di lato). Limiti rimasti nel README della cartella.
 
 ---
 
