@@ -12,7 +12,7 @@ shorter than the hair they drive), with:
 - collisions with the deformed body and head surfaces (nearest vertex + normal),
   tested at the lever points and at a spread of the hair-mesh vertices each bone moves
   (skinned like the mesh), so the whole width and length of a lock stays out; the arms
-  are part of the body mesh, and the clearance from the skin covers the top (~4 mm).
+  are part of the body mesh, and the clearance from the skin covers the top (~5 mm).
 
 The result is keyed as rotations of the hair bones in the Action, like every other
 channel, so it plays and can be edited per clip.  Parameters are in CHAINS.
@@ -46,7 +46,7 @@ CHAIN_COLLIDERS = {'coda': ['Body', 'head'], 'ciocca destra': ['Body'], 'ciocca 
 # hair-mesh vertices tested per bone, and the clearance kept for them; vertices close to
 # the bone root (less than SAMPLE_MIN_REACH of the lever) are left to the parent bone
 SAMPLES = 14
-SAMPLE_RADIUS = 0.010   # from the skin: the top (~4 mm) plus a few mm
+SAMPLE_RADIUS = 0.010   # from the skin (armature units, 12 mm): the top (~5 mm) plus a few mm
 SAMPLE_MIN_REACH = 0.3
 SAMPLE_MIN_WEIGHT = 0.35
 SAMPLE_ITERS = 1

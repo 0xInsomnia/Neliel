@@ -12,8 +12,8 @@ repository.
 ## Uso
 
 Mettere `apply_bandai.py`, `bvh.py`, `retarget.py`, `hair_physics.py`,
-`hand_pose.py`, `face_anim.py`, `foot_lock.py` e la cartella `bvh/` accanto al
-`.blend`, poi:
+`hand_pose.py`, `face_anim.py`, `foot_lock.py`, `arm_collision.py` e la cartella
+`bvh/` accanto al `.blend`, poi:
 
 ```sh
 blender -b Neliel_rig_fasce_test_02.blend --python apply_bandai.py -- \
@@ -34,6 +34,7 @@ Opzioni:
 - `--no-fingers`: lascia le dita a riposo.
 - `--no-face`: niente battiti di ciglia, sguardo o espressioni (e nessun driver aggiunto).
 - `--no-foot-lock`: lascia scivolare i piedi come nella mocap.
+- `--no-arm-collision`: lascia entrare mani e avambracci nel petto come nella mocap.
 
 Lo script non scrive mai il file aperto: rifiuta un `--out` uguale al file
 sorgente. Imposta la scena a 30 fps, assegna a `Jean` la prima clip e mette il
@@ -96,6 +97,20 @@ del ginocchio e le verifiche usano la posizione bloccata. Dopo l'appoggio la
 correzione si azzera in 5 fotogrammi. Una correzione che richiederebbe una gamba
 più lunga del rig (o di quanto già chiede la mocap) viene ridotta.
 
+## Mani fuori dal petto
+
+L'attrice ha un petto molto più piccolo di Neliel: quando porta una mano al
+petto, incrocia le braccia o tiene le mani davanti a sé, la mano di Neliel entra
+nel seno. `arm_collision.py`, dopo aver messo le chiavi dei controlli, valuta
+ogni fotogramma e misura i vertici di avambraccio, mano e dita contro la pelle
+del busto e la fascia (vertice più vicino e normale). Dove sono dentro, sposta il
+controllo `HandIK` dello spostamento minimo che li porta tutti fuori più 3,6 mm
+(minimi quadrati, al massimo 1,25 volte il punto più profondo per passata e
+11 cm in tutto); il gomito segue con l'IK. La correzione si estende ai
+fotogrammi vicini e viene smussata, quindi la mano si appoggia sul seno invece
+di saltare; il calcolo si ripete fino a 4 volte, finché resta meno di 1,8 mm
+dentro. La rotazione della mano non cambia.
+
 ## Dita
 
 La mocap non registra le dita. `hand_pose.py` dà una mano rilassata (dita
@@ -149,8 +164,18 @@ dalle shape key). Per ogni sotto-passo (4 per fotogramma):
 - molla verso la forma di riposo portata dall'osso genitore;
 - gravità relativa al riposo: a testa dritta resta la forma modellata,
   nell'inchino la coda cade;
-- collisioni con la superficie deformata di `Body` (e `head` per la coda),
-  vertice più vicino e normale; raggio mai maggiore dello spazio a riposo.
+- collisioni con la superficie deformata di `Body` (braccia comprese, e `head`
+  per la coda): distanza dal piano tangente dei 4 vertici più vicini, mediata;
+  raggio mai maggiore dello spazio a riposo. Le collisioni si controllano sul
+  punto medio e sul fondo di ogni leva e su 14 vertici della mesh dei capelli per
+  osso, sparsi su larghezza e lunghezza e calcolati con i pesi reali della mesh
+  (ogni vertice segue due ossa vicine). Per questi vertici restano 1,2 cm dalla
+  pelle, che coprono anche la fascia (circa 5 mm sopra la pelle; la fascia non è
+  un ostacolo perché il suo bordo aperto rendeva la distanza discontinua).
+  Un vertice che l'osso non riesce a portare fuori ruotando di meno di 0,6 rad
+  viene lasciato alle ossa superiori. Un contatto sposta i capelli senza dar
+  loro velocità (la coda non rimbalza via quando il braccio la colpisce), al
+  massimo 0,05 rad per sotto-passo.
 
 La simulazione si assesta per 2 s, con più smorzamento, sul primo fotogramma,
 perché una clip può partire lontano dalla posa di riposo. Ogni osso della coda
@@ -160,7 +185,9 @@ nell'inchino cade comunque, piegandosi su più ossa. Le ciocche laterali sono
 rigide, escono dal corpo al massimo di 5 mm per sotto-passo, non si piegano
 oltre 70°, e anche le loro ossa superiori controllano dove finisce la punta:
 una ciocca che tocca il petto (testa china) si sposta tutta invece di
-ripiegarsi in punta. I parametri sono in `CHAINS` in cima al file.
+ripiegarsi in punta. Le rotazioni calcolate vengono infine smussate nel tempo
+(gaussiana di 1 fotogramma) per togliere il tremolio dei contatti. I parametri
+sono in `CHAINS` e nelle costanti in cima al file.
 
 ## Retarget
 
